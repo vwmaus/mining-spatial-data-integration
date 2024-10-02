@@ -145,7 +145,7 @@ if (!file.exists("./data/cluster_data.gpkg")) {
     cluster_data <- st_centroid(cluster_data) |>
         st_join(world_map, join = st_nearest_feature) |>
         st_join(ecoregions, join = st_nearest_feature) |>
-        mutate(centroid = geom, geom = cluster_data$geom)
+        mutate(geom = cluster_data$geom)
 
     st_write(cluster_data, dsn = "./data/cluster_data.gpkg")
 
