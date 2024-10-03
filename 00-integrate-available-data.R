@@ -10,7 +10,7 @@ library(rnaturalearthdata)
 dir.create("./data", showWarnings = F)
 
 # Import fast version of S2 union split agg
-source("s2_union_split_agg.R")
+source("./R/s2_union_split_agg.R")
 
 ###### Download data sources
 
