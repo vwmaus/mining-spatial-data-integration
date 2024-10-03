@@ -1,4 +1,4 @@
-s2_union_split_agg <- function(x, options = s2_options()){
+s2_union_split_agg <- function(x, options = s2_options(), progress = FALSE){
   
   # check for intersects 
   idx_intersects <- s2::s2_intersects_matrix(x, x, options = options)
@@ -6,7 +6,14 @@ s2_union_split_agg <- function(x, options = s2_options()){
   # prapare groups of intersects 
   idx_list <- lapply(seq_along(idx_intersects)[lengths(idx_intersects) > 1], function(i) c(i, idx_intersects[[i]]))
   group_list <- tibble::tibble(fid = integer(), gid = integer())
+
+  if(progress){
+    require(progress)
+    pb <- progress::progress_bar$new(format = "  calculating splits [:bar] :percent in :elapsed", total = length(idx_list), clear = FALSE, width = 60)
+  }
+
   for(i in idx_list){
+    if(progress) pb$tick()
     # check if intersecting fids already exist in the groups
     gids <- dplyr::filter(group_list, fid %in% unique(i))
     if(nrow(gids) > 0){
@@ -33,11 +40,22 @@ s2_union_split_agg <- function(x, options = s2_options()){
   x <- x[-group_list$fid]
   
   # apply s2_union_agg to groups 
-  x_union <- lapply(x_split, s2_union_agg, options = options) 
+  if(progress){
+    require(progress)
+    pb <- progress::progress_bar$new(format = "  calculating union aggregate for each split [:bar] :percent in :elapsed", total = length(x_split), clear = FALSE, width = 60)
+  }
+  x_union <- lapply(x_split, function(x) {if(progress) pb$tick(); s2_union_agg(x, options = options)})
   
   # gather results into single object 
   result <- s2_rebuild_agg(c(x, do.call("c", x_union)), options = options)
   
+  # # Optimized incremental aggregation using Reduce
+  # result <- Reduce(
+  #   function(acc, geom) s2_rebuild_agg(c(acc, geom), options = options),
+  #   c(list(x), x_union)
+  # )
+
   return(result)
   
 }
+
