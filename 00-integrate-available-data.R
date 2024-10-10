@@ -4,8 +4,8 @@ library(dplyr)
 library(tidyr)
 library(stringr)
 library(readxl)
-library(rnaturalearth)
-library(rnaturalearthdata)
+library(igraph)
+library(units)
 
 dir.create("./data", showWarnings = F)
 
@@ -21,18 +21,6 @@ if(!dir.exists("./data/jasansky")){
 
 if(!file.exists("./data/gem.xlsx")){
     download.file("https://globalenergymonitor.org/wp-content/uploads/2024/04/Global-Coal-Mine-Tracker-April-2024.xlsx", destfile = "./data/gem.xlsx")
-}
-
-if(!file.exists("./data/ecoregions/ecoregions.gpkg")){
-    download.file("https://storage.googleapis.com/teow2016/Ecoregions2017.zip", destfile = "./data/ecoregions.zip")
-    unzip("./data/ecoregions.zip", exdir = "./data/ecoregions")
-    sf_use_s2(FALSE) # set FALSE to perform geometry fixing operations
-    st_read("./data/ecoregions/Ecoregions2017.shp") |>
-        select(ecoregions_name = ECO_NAME, biome_name = BIOME_NAME) |>
-        st_cast(to = "POLYGON") |>
-        st_simplify() |>
-        st_write(dsn = "./data/ecoregions/ecoregions.gpkg")
-    sf_use_s2(TRUE)
 }
 
 if(!file.exists("./data/tang/tang.gpkg")){
@@ -99,8 +87,8 @@ if(!file.exists("./data/maus_tang_osm.gpkg")){
         select(geom)
 
     sf_use_s2(TRUE)
+    
     mining_land_use <- bind_rows(maus, tang, osm) |>
-        select(geom) |>
         #filter(s2_is_valid(geom)) |>
         st_as_s2() |>
         s2_union_split_agg(options = s2_options(model = "closed"), progress = TRUE) |>
@@ -192,27 +180,73 @@ if (!file.exists("./data/mining_properties.gpkg")) {
 # Create cluster data
 if (!file.exists("./data/cluster_data.gpkg")) {
 
-    # Deactivate S2 for st_nearest_feature operations because of invalid geometries in the external data sources
-    sf_use_s2(FALSE)
-
-    # Read biomes
-    ecoregions <- st_read("./data/ecoregions/ecoregions.gpkg")
-
-    # Read countries
-    world_map <- ne_countries(scale = "medium", returnclass = "sf") |>
-        select(country_name = admin, country_isoa3 = adm0_a3)
-
     # Create cluster data including polygons and points
     cluster_data <- bind_rows(mining_land_use, mining_properties)
 
-    cluster_data <- st_centroid(cluster_data) |>
-        st_join(world_map, join = st_nearest_feature) |>
-        st_join(ecoregions, join = st_nearest_feature) |>
-        mutate(geom = cluster_data$geom)
+    # Use s2 geometry engine for accurate global distances
+    sf_use_s2(TRUE)
+
+    # Define the distance threshold
+    distance_threshold <- set_units(20, "km")
+
+    # Compute neighbor relationships using spatial indexing
+    system.time(neighbors_list <- st_is_within_distance(cluster_data, dist = distance_threshold)) # (~3min)
+
+    # Create an edge list
+    edge_list <- do.call(rbind, lapply(seq_along(neighbors_list), function(i) {
+    if (length(neighbors_list[[i]]) > 0) {
+        cbind(i, neighbors_list[[i]])
+    }}))
+
+    # Remove self-loops and duplicate edges
+    edge_list <- edge_list[edge_list[,1] != edge_list[,2], ]
+    system.time(edge_list <- unique(t(apply(edge_list, 1, sort)))) # (~12min)
+
+    # Build the graph
+    g <- graph_from_edgelist(edge_list, directed = FALSE)
+
+    # Find connected components
+    components <- components(g)
+    membership <- components$membership
+
+    # Map feature indices to component IDs
+    membership_df <- data.frame(
+        feature_index = as.integer(V(g)),
+        id_group = membership,
+        id_batch = 
+    )
+
+    # Assign id_group to cluster_data
+    cluster_data <- mutate(cluster_data, id_group = NA_integer_, .before = geom)
+    cluster_data$id_group[membership_df$feature_index] <- membership_df$id_group
+
+    # Assign unique IDs to isolated features
+    all_indices <- seq_len(nrow(cluster_data))
+    isolated_indices <- setdiff(all_indices, membership_df$feature_index)
+    if (length(isolated_indices) > 0) {
+        max_id <- max(cluster_data$id_group, na.rm = TRUE)
+        cluster_data$id_group[isolated_indices] <- seq(max_id + 1, max_id + length(isolated_indices))
+    }
+
+    # Set the maximum batch size for processing groups
+    max_batch_size <- 10000
+
+    # Initialize id_batch column
+    id_group_batch <- cluster_data |>
+        st_drop_geometry() |>
+        group_by(id_group) |>
+        reframe(group_size = n()) |>
+        arrange(desc(group_size)) |>
+        mutate(id_batch = NA_integer_, is_large_group = group_size > max_batch_size) |>
+        mutate(id_batch = if_else(is_large_group, NA_integer_, 0L),
+            cum_size = cumsum(if_else(is_large_group, 0L, group_size)),
+            id_batch = if_else(is_large_group, row_number() + max(id_group_sizes$id_batch, na.rm = TRUE), ceiling(cum_size / max_batch_size))
+        ) |>
+        select(id_group, id_batch)
+
+    cluster_data <- left_join(cluster_data, id_group_batch)
 
     st_write(cluster_data, dsn = "./data/cluster_data.gpkg", delete_dsn = TRUE)
-
-    sf_use_s2(TRUE)
 
 } else {
 
@@ -220,21 +254,16 @@ if (!file.exists("./data/cluster_data.gpkg")) {
 
 }
 
-# Data checks
-nrow(cluster_data)
-sum(cluster_data$area_mine, na.rm = TRUE) * 1e-6
-
+# Verify the cluster data
+cat("Number of features:", nrow(cluster_data), "\n")
+cat("Mining area:", sum(cluster_data$area_mine, na.rm = TRUE) * 1e-6, "km2", "\n")
+cat("Number of processing batches:", length(unique(cluster_data$id_batch)), "and", length(unique(cluster_data$id_group)), "groups:", "\n")
+cat("Number of batches with NAs:", length(which(is.na(cluster_data$id_batch))))
+cat("Summary of processing batch size:")
 st_drop_geometry(cluster_data) |>
-    group_by(biome_name) |>
-    summarise(area_mine = sum(area_mine, na.rm = TRUE) * 1e-6) |>
-    mutate(perc = area_mine / sum(perc = area_mine)) |>
-    arrange(desc(perc))
-
-st_drop_geometry(cluster_data) |>
-    group_by(country_name) |>
-    summarise(area_mine = sum(area_mine, na.rm = TRUE) * 1e-6) |>
-    mutate(perc = area_mine / sum(perc = area_mine)) |>
-    arrange(desc(perc))
-
-
+    group_by(id_batch) |>
+    summarise(batch_size = n()) |>
+    arrange(desc(batch_size)) |>
+    select(batch_size) |>
+    summary()
 

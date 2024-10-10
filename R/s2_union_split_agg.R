@@ -42,19 +42,14 @@ s2_union_split_agg <- function(x, options = s2_options(), progress = FALSE){
   # apply s2_union_agg to groups 
   if(progress){
     require(progress)
-    pb <- progress::progress_bar$new(format = "  calculating union aggregate for each split [:bar] :percent in :elapsed", total = length(x_split), clear = FALSE, width = 60)
+    pb <- progress::progress_bar$new(format = "  calculating union  [:bar] :percent in :elapsed", total = length(x_split), clear = FALSE, width = 60)
   }
   x_union <- lapply(x_split, function(x) {if(progress) pb$tick(); s2_union_agg(x, options = options)})
   
   # gather results into single object 
+  cat("  rebuilding geometry...")
   result <- s2_rebuild_agg(c(x, do.call("c", x_union)), options = options)
-  
-  # # Optimized incremental aggregation using Reduce
-  # result <- Reduce(
-  #   function(acc, geom) s2_rebuild_agg(c(acc, geom), options = options),
-  #   c(list(x), x_union)
-  # )
-
+  cat("  all done...\n")
   return(result)
   
 }

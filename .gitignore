@@ -51,3 +51,4 @@ rsconnect/
 # Other files
 data/
 output/
+.vscode/
