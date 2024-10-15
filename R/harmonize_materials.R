@@ -1,19 +1,14 @@
 # Optimized function to harmonize materials
-harmonize_materials <- function(materials_vector, mapping_table) {
-  # Ensure mapping_table has the required columns
-  required_cols <- c("material", "material_harmonized")
-  if (!all(required_cols %in% colnames(mapping_table))) {
-    stop("Mapping table must contain 'material' and 'material_harmonized' columns.")
-  }
-  
+harmonize_materials <- function(materials_vector, harmonized_tbm, col_from, col_to) {
+
   # Prepare the mapping table:
   # - Trim whitespace
   # - Convert to lowercase for case-insensitive matching
   # - Ensure unique mappings by keeping the first occurrence
-  mapping_table_prepared <- mapping_table |>
+  mapping_table_prepared <- harmonized_tbm |>
     mutate(
-      material_clean = stri_trim_both(stri_trans_tolower(material)),
-      material_harmonized_clean = stri_trim_both(material_harmonized)
+      material_clean = stri_trim_both(stri_trans_tolower(!!sym(col_from))),
+      material_harmonized_clean = stri_trim_both(!!sym(col_to))
     ) |>
     distinct(material_clean, .keep_all = TRUE)  # Remove duplicates, keep first
   

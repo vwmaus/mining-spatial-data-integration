@@ -238,7 +238,8 @@ if (!file.exists("./data/cluster_data.gpkg")) {
         reframe(group_size = n()) |>
         arrange(desc(group_size)) |>
         mutate(id_batch = NA_integer_, is_large_group = group_size > max_batch_size) |>
-        mutate(id_batch = if_else(is_large_group, NA_integer_, 0L),
+        mutate(
+            id_batch = if_else(is_large_group, NA_integer_, 0L),
             cum_size = cumsum(if_else(is_large_group, 0L, group_size)),
             id_batch = if_else(is_large_group, row_number() + max(id_group_sizes$id_batch, na.rm = TRUE), ceiling(cum_size / max_batch_size))
         ) |>
@@ -266,4 +267,32 @@ st_drop_geometry(cluster_data) |>
     arrange(desc(batch_size)) |>
     select(batch_size) |>
     summary()
+
+# join datasets and calculate shares
+plot_data <- cluster_data |>
+  filter(str_detect(id, "A")) |>
+  transmute(Source = data_source, Area = st_area(geom) |> units::set_units("ha") |> units::drop_units(), Latitude = st_coordinates(st_centroid(geom))[,2]) |> 
+  st_drop_geometry() |> 
+  as_tibble() |> 
+  mutate(Latitude = cut(Latitude, breaks = seq(-60, 90, 20))) |> 
+  group_by(Source, Latitude) |> 
+  summarise(Area = sum(Area, na.rm = TRUE))
+
+gp <- plot_data |>
+  mutate(Source = factor(Source, (plot_data |> arrange(Latitude, Area))$Source[1:7], (plot_data |> arrange(Latitude, Area))$Source[1:7])) |>
+  ggplot(aes(x = Area, y = Latitude, fill = `Source`)) + 
+  geom_bar(stat="identity", width = 0.8) + 
+  theme_linedraw() + 
+  theme(legend.position = "bottom",
+        legend.direction = "horizontal",
+        legend.justification = "center",
+        legend.box.spacing = unit(0.0, "cm"),
+        legend.key.size = unit(0.3, "cm")) + 
+  scale_fill_viridis(discrete = TRUE, option = "D", direction = -1) +
+  scale_x_continuous(labels = label_number(scale = 1e-6, accuracy = 0.1)) +
+  xlab("Area (M ha)")
+gp
+
+ggsave(filename = str_c("./output/fig-spatial-distribution.png"), plot = gp, bg = "#ffffff",
+       width = 345, height = 140, units = "mm", scale = 1)
 

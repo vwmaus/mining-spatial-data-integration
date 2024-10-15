@@ -1,6 +1,5 @@
 # This script finds the optimal threshold for clustering the spatial data.
 # It finds a optimal global threshold and multiple 
-
 library(sf)
 library(stringr)
 library(dplyr)
@@ -11,22 +10,24 @@ library(ggplot2)
 library(scales)
 library(stringi)
 library(purrr)
+library(car)
 source("./R/harmonize_materials.R")
 
 red_d <- "#cc3e5b"
 green_d <- "#306056"
 yellow_d <- "#f6ae2d"
+max_global_threshold <- 20
+max_local_threshold <- 1
 
-mapping_table <- read_csv("./data/materials_harmonized.csv")
+mapping_table <- read_csv("./data/harmonisation_metals_coal.csv")
 
 hcluster_concordance <- read_csv("./data/hcluster_concordance.csv") |>
   filter(str_detect(id, "A")) |> # select only polygons
   left_join(st_read(dsn = "./data/cluster_data.gpkg", query = "SELECT id, area_mine FROM cluster_data", quiet = TRUE)) |>
-  mutate(across(all_of(starts_with("host_")), ~ harmonize_materials(.x, mapping_table)),
-         across(all_of(starts_with("list_")), ~ harmonize_materials(.x, mapping_table)))
+  mutate(across(all_of(starts_with("host_")), ~ harmonize_materials(.x, mapping_table, col_from = "material", col_to = "material_harmonized")),
+         across(all_of(starts_with("list_")), ~ harmonize_materials(.x, mapping_table, col_from = "material", col_to = "material_harmonized")))
 
 # Filter global optimal threshold - Pareto Optimal Point
-max_global_threshold <- 20
 materials_area_global <- hcluster_concordance |>
   mutate(id_max_threshold := !!sym(str_c("id_hc_", max_global_threshold))) |>
   transmute(id, area_mine,
@@ -70,8 +71,6 @@ pareto_optimal_point_global <- materials_area_global |>
 select(pareto_optimal_point_global, clust_dist, perc_area_known, perc_area_unknown, perc_area_multi_count, distances, pareto_index)
 
 # max threshold defined be visual check on the figure 
-max_local_threshold <- unique(pareto_optimal_point_global$pareto_index)
-#max_local_threshold <- 11
 materials_area_local <- hcluster_concordance |>
   mutate(id_max_threshold := !!sym(str_c("id_hc_", max_local_threshold))) |>
   transmute(id, id_max_threshold, area_mine,
@@ -123,7 +122,7 @@ pareto_optimal_point_local_summary <- select(pareto_optimal_point_local, clust_d
       perc_area_unknown = area_unknown / area_mine,
       perc_area_multi_count = area_multi_count / area_mine,
       clust_dist = "",
-      approach = "Local")
+      approach = str_c("Local (max threshold ", max_local_threshold, " km)"))
 
 pareto_optimal_point_global_summary <- select(pareto_optimal_point_global, clust_dist, pareto_index, area_mine, area_known, area_unknown, area_multi_count) |>
   filter(clust_dist == pareto_index) |>
@@ -132,7 +131,7 @@ pareto_optimal_point_global_summary <- select(pareto_optimal_point_global, clust
       perc_area_known = area_known / area_mine,
       perc_area_unknown = area_unknown / area_mine,
       perc_area_multi_count = area_multi_count / area_mine,
-      approach = "Global")
+      approach = str_c("Global (max threshold ", max_global_threshold, " km)"))
 
 bind_rows(
   pareto_optimal_point_local_summary,
@@ -165,17 +164,17 @@ gp <- pareto_optimal_point_global |>
   arrange(clust_dist) |> 
   mutate(clust_dist = as.character(clust_dist)) |>
   ggplot(aes(y = perc_area_unknown, x = perc_area_multi_count, label = str_c(clust_dist, " km"))) +
-  geom_line(size = 1) +  # Connect points in the order of clust_dist
+  geom_line(linewidth = 1) +  # Connect points in the order of clust_dist
   geom_point(size = 2) +  # Add points for emphasis
   geom_point(data = pareto_optimal_point_local_summary, colour = red_d, size = 2) +
   geom_text(hjust=-0.1, vjust=-0.5) +
   geom_segment(aes(x = x1, xend = x2, y = y1, yend = y2, color = approach), data = optimal_point, linewidth = 0.5, linetype = "dashed") +
-  geom_text(aes(x = x2+c(-0.06,-0.04), y = c(0,0), label = str_c(round(100*x2,0), "%")), 
+  geom_text(aes(x = x2+c(-0.02,-0.02), y = c(0,0), label = str_c(round(100*x2,0), "%")), 
             data = optimal_point[1:2,], vjust = 1.5, hjust = -0.1, color = "black") +
   geom_text(aes(x = 0, y = y2, label = str_c(round(y2*100, 0), "%")), 
             data = optimal_point[1:2,], vjust = 0.5, hjust = 1.2, color = "black") +
   theme_minimal() +
-  scale_color_manual(name = "Threshold optimization", values = c("Local" = red_d, "Global" = green_d)) +
+  scale_color_manual(name = "Threshold optimization", values = c(green_d, red_d)) +
   scale_y_continuous(labels = percent_format(accuracy = 1)) +
   scale_x_continuous(labels = percent_format(accuracy = 1)) +
   labs(
@@ -183,7 +182,7 @@ gp <- pareto_optimal_point_global |>
     x = "Area assigned to multiple primary materials"
   ) +
   theme(
-    legend.position = "none",
+    legend.position = "inside",
     legend.position.inside = c(0.8,0.8),
     plot.title = element_text(size = 14, face = "bold"),
     plot.subtitle = element_text(size = 10)
@@ -323,7 +322,7 @@ final_clusters <- select(materials_area_local, id, id_max_threshold, clust_dist)
   left_join(selected_threshold) |>
   filter(clust_dist == pareto_index) |>
   group_by(id_max_threshold, pareto_index) |>
-  mutate(id_cluster = str_c("H", str_pad(row_number(), width = 7, pad = 0))) |>
+  mutate(id_cluster = str_c("H", str_pad(cur_group_id(), width = 7, pad = 0))) |>
   ungroup() |>
   select(id, id_cluster, dist_threshold = clust_dist)
 
@@ -359,26 +358,5 @@ gp <- final_cluster_concordance |>
 ggsave(filename = str_c("./output/fig-distribution-number-assigned-materials.png"), plot = gp, bg = "#ffffff",
        width = 140, height = 140, units = "mm", scale = 1)
 
-
-# pareto_optimal_point |>
-#   filter(id_max_threshold == "H0000015") |>
-#   arrange(clust_dist) |> 
-#   ggplot(aes(y = perc_area_unknown, x = perc_area_multi_count, color = clust_dist, label = str_c(clust_dist, " km"))) +
-#   geom_path(size = 1) +  # Connect points in the order of clust_dist
-#   geom_point(size = 2) +  # Add points for emphasis
-#   geom_text(hjust=-0.1, vjust=-0.5) +
-#   theme_minimal() +
-#   scale_color_viridis_c(name = "Threshold\nDistance (km)", option = "D") +
-#   scale_y_continuous(labels = percent_format(accuracy = 1)) +
-#   scale_x_continuous(labels = percent_format(accuracy = 1)) +
-#   labs(
-#     y = "Area with unknown material",
-#     x = "Area including multiple counts"
-#   ) +
-#   theme(
-#     legend.position = "inside",
-#     legend.position.inside = c(0.8,0.8),
-#     plot.title = element_text(size = 14, face = "bold"),
-#     plot.subtitle = element_text(size = 10)
-#   )
+write_csv(final_cluster_concordance, "./output/mine_clusters_concordance.csv")
 

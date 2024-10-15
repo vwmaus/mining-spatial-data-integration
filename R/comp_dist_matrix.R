@@ -36,7 +36,9 @@ comp_dist_matrix <-
     # compute geographical distance in parallel --------------------------------
     if(!file.exists(path_dist_matrix)){
       
-      #x <- bind_rows(slice(filter(x, id_group == ids_group[1]), 1:7), slice(filter(x, id_group == ids_group[2]), 1:7)) |> mutate(n = row_number())
+      # x <- bind_rows(slice(filter(x, id_group == ids_group[1]), 1:7),
+                      # slice(filter(x, id_group == ids_group[2]), 1:7),
+                      # slice(filter(x, id_group == ids_group[3]), 1:7)) |> mutate(n = row_number())
       cat("   splitting batch data for each group...", "\n")
       ids <- x$id
       ids_group <- unique(x$id_group)

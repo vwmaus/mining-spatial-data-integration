@@ -82,6 +82,7 @@ hc_file_list <- foreach(
       # ii = which(out$id %in% slice(filter(out, id_group == unique(out$id_group)[1]), 1:7)$id)
       # jj = which(out$id %in% slice(filter(out, id_group == unique(out$id_group)[2]), 1:7)$id)
       # dist_mat <- dist_mat[c(ii,jj),c(ii,jj)]
+      dist_mat = readRDS("/home/maus/Downloads/batch_0006.rds")
       dist_mat <- as.matrix(t(dist_mat))
       dist_mat[dist_mat == 0 & row(dist_mat) != col(dist_mat)] <- Inf
       dist_mat <- as.dist(dist_mat)
@@ -117,6 +118,7 @@ hc_file_list <- foreach(
 
 cluster_ids <- list.files(hcluster_results_path, pattern = "\\.csv$", full.names = TRUE) |>
   lapply(read_csv)
+
 cluster_ids <- do.call(rbind, cluster_ids)
 rownames(cluster_ids) <- NULL
 
@@ -124,9 +126,8 @@ cluster_ids <- cluster_ids |>
   left_join(
     st_read(
       dsn = cluster_data_path,
-      query = str_c("SELECT id, id_group, primary_commodity, commodities_list, area_mine FROM cluster_data"), quiet = TRUE)
+      query = str_c("SELECT id, id_batch, id_group, primary_commodity, commodities_list, area_mine FROM cluster_data"), quiet = TRUE)
   )
-
 
 # Creat unique cluster id and group commodities
 id_hcluster_cols <- names(cluster_ids) |>
@@ -137,7 +138,7 @@ hcluster_concordance <- foreach(
   .combine = 'left_join'
 ) %dopar% {
   cluster_ids |> 
-    group_by(id_group, !!sym(col_name)) |> 
+    group_by(id_batch, id_group, !!sym(col_name)) |> 
     transmute(id,
               !!sym(col_name) := str_c("H", str_pad(cur_group_id(), pad = "0", width = 7)),
               !!sym(str_c("primary_comm_list_", str_remove_all(col_name, "id_"))) := collapse_groups(primary_commodity),
