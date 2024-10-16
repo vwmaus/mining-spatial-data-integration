@@ -82,7 +82,6 @@ hc_file_list <- foreach(
       # ii = which(out$id %in% slice(filter(out, id_group == unique(out$id_group)[1]), 1:7)$id)
       # jj = which(out$id %in% slice(filter(out, id_group == unique(out$id_group)[2]), 1:7)$id)
       # dist_mat <- dist_mat[c(ii,jj),c(ii,jj)]
-      dist_mat = readRDS("/home/maus/Downloads/batch_0006.rds")
       dist_mat <- as.matrix(t(dist_mat))
       dist_mat[dist_mat == 0 & row(dist_mat) != col(dist_mat)] <- Inf
       dist_mat <- as.dist(dist_mat)

@@ -52,6 +52,9 @@ comp_dist_matrix <-
         xj <- filter(x, id_group == xi$id_group & n >= xi$n)
         as.numeric(sf::st_distance(x = xi, y = xj)[1,])
       }
+
+      # replace zero with 1m to handle sparse matrix
+      dist_values[dist_values == 0] <- 1 
       
       cat("   retrieving matrix indices...", "\n")
       idx = do.call("c", lapply(x$n, function(i) rep(i, length(x$n))[x$n>=i & x$id_group == x$id_group[i]]))
