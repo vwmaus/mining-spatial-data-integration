@@ -1,5 +1,23 @@
 # This script finds the optimal threshold for clustering the spatial data.
-# It finds a optimal global threshold and multiple 
+# It minimizes the area with unknown primary material and the area with multiple primary materials.
+# It also performs data checks an comparisons between results of local and global optimal
+# The local optimal usually provides better results and are set as default to produce the data release
+# 
+################################################################################
+########################### REQUIRED PARAMETERS ################################
+# the maximum distance for the global optimization 
+max_global_threshold <- 20
+# the maximum distance for the local optimization 
+max_local_threshold <- 8
+# concordance table to harmonise materials. Set to NULL to keep as they are
+path_harmonisation_table <- "./data/harmonisation_all_materials.csv"
+# set version of the data output
+release_version_name <- "all_materials"
+release_version_date <- format(Sys.Date(), '%Y%m%d')
+################################################################################
+
+
+# Require libraries
 library(sf)
 library(stringr)
 library(dplyr)
@@ -11,21 +29,25 @@ library(scales)
 library(stringi)
 library(purrr)
 library(car)
-source("./R/harmonize_materials.R")
 
+# Plot colours
 red_d <- "#cc3e5b"
 green_d <- "#306056"
 yellow_d <- "#f6ae2d"
-max_global_threshold <- 20
-max_local_threshold <- 1
 
-mapping_table <- read_csv("./data/harmonisation_metals_coal.csv")
+path_output <- str_c("./output/", release_version_date, "-", release_version_name)
+dir.create(path_output, recursive = TRUE, showWarnings = FALSE)
 
 hcluster_concordance <- read_csv("./data/hcluster_concordance.csv") |>
-  filter(str_detect(id, "A")) |> # select only polygons
-  left_join(st_read(dsn = "./data/cluster_data.gpkg", query = "SELECT id, area_mine FROM cluster_data", quiet = TRUE)) |>
-  mutate(across(all_of(starts_with("host_")), ~ harmonize_materials(.x, mapping_table, col_from = "material", col_to = "material_harmonized")),
-         across(all_of(starts_with("list_")), ~ harmonize_materials(.x, mapping_table, col_from = "material", col_to = "material_harmonized")))
+  left_join(st_read(dsn = "./data/cluster_data.gpkg", query = "SELECT id, area_mine FROM cluster_data", quiet = TRUE)) 
+
+if(!is.null(path_harmonisation_table)){
+  source("./R/harmonize_materials.R")
+  mapping_table <- read_csv(path_harmonisation_table)
+  hcluster_concordance <- hcluster_concordance |>
+    mutate(across(all_of(starts_with("host_")), ~ harmonize_materials(.x, mapping_table, col_from = "material", col_to = "material_harmonized")),
+           across(all_of(starts_with("list_")), ~ harmonize_materials(.x, mapping_table, col_from = "material", col_to = "material_harmonized")))
+}
 
 # Filter global optimal threshold - Pareto Optimal Point
 materials_area_global <- hcluster_concordance |>
@@ -40,35 +62,31 @@ materials_area_global <- hcluster_concordance |>
   mutate(clust_dist = as.numeric(clust_dist)) |>
   filter(clust_dist <= max_global_threshold) |>
   pivot_wider(names_from = var, values_from = value) |>
-  mutate(area_mine_adj = area_mine / ifelse(is.na(counthost), 1, counthost)) |>
   rename(unknown = host)
 
 pareto_optimal_point_global <- materials_area_global |>
   group_by(clust_dist) |>
-  reframe(
-          area_known = sum(area_mine * (!unknown)),
-          area_unknown = sum(area_mine * (unknown)),
-          area_host = sum(area_mine * counthost, na.rm = TRUE),
-          area_list = sum(area_mine * countlist, na.rm = TRUE),
-          area_single_host = sum(area_mine * (counthost==1), na.rm = TRUE),
-          area_mixed_host = sum(area_mine * (counthost>1), na.rm = TRUE),
-          area_multi_count = sum(area_mine * (counthost - 1), na.rm = TRUE),
-          ration_mixed_by_single = area_mixed_host / area_single_host,
-          mean_area_host = mean(area_mine / countlist, na.rm = TRUE),
-          median_area_host = median(area_mine / countlist, na.rm = TRUE),
-          area_mine = sum(area_mine),
+  reframe(area_na = sum(area_mine, na.rm = TRUE),
+          area_na = area_na / area_na,
+          area_known = area_na * sum(area_mine * (!unknown), na.rm = TRUE),
+          area_unknown = area_na * sum(area_mine * (unknown), na.rm = TRUE),
+          area_host = area_na * sum(area_mine * counthost, na.rm = TRUE),
+          area_list = area_na * sum(area_mine * countlist, na.rm = TRUE),
+          area_single_host = area_na * sum(area_mine * (counthost==1), na.rm = TRUE),
+          area_mixed_host = area_na * sum(area_mine * (counthost>1), na.rm = TRUE),
+          area_multi_count = area_na * sum(area_mine * (counthost - 1), na.rm = TRUE),
+          area_mine = area_na * sum(area_mine, na.rm = TRUE),
           perc_area_known = area_known / area_mine,
           perc_area_unknown = area_unknown / area_mine,
           perc_area_host = area_host / area_mine,
           perc_area_list = area_list / area_mine,
           perc_area_mixed_host = area_mixed_host / area_mine,
-          perc_area_multi_count = area_multi_count / area_mine,
-          perc_mean_area_host = mean_area_host / area_mine,
-          perc_median_area_host = median_area_host / area_mine) |>
+          perc_area_multi_count = area_multi_count / area_mine
+          ) |>
           mutate(distances = sqrt(perc_area_multi_count/max(c(perc_area_multi_count, 1e-12)))^2 + (perc_area_unknown/max(c(perc_area_unknown, 1e-12)))^2,
                  pareto_index = clust_dist[which.min(distances)])
 
-select(pareto_optimal_point_global, clust_dist, perc_area_known, perc_area_unknown, perc_area_multi_count, distances, pareto_index)
+# select(pareto_optimal_point_global, clust_dist, perc_area_known, perc_area_unknown, perc_area_multi_count, distances, pareto_index)
 
 # max threshold defined be visual check on the figure 
 materials_area_local <- hcluster_concordance |>
@@ -83,40 +101,37 @@ materials_area_local <- hcluster_concordance |>
   mutate(clust_dist = as.numeric(clust_dist)) |>
   filter(clust_dist <= max_local_threshold) |>
   pivot_wider(names_from = var, values_from = value) |>
-  mutate(area_mine_adj = area_mine / ifelse(is.na(counthost), 1, counthost)) |>
   rename(unknown = host)
 
 pareto_optimal_point_local <- materials_area_local |>
   group_by(clust_dist, id_max_threshold) |>
-  reframe(area_known = sum(area_mine * (!unknown)),
-          area_unknown = sum(area_mine * (unknown)),
-          area_host = sum(area_mine * counthost, na.rm = TRUE),
-          area_list = sum(area_mine * countlist, na.rm = TRUE),
-          area_single_host = sum(area_mine * (counthost==1), na.rm = TRUE),
-          area_mixed_host = sum(area_mine * (counthost>1), na.rm = TRUE),
-          area_multi_count = sum(area_mine * (counthost - 1), na.rm = TRUE),
-          ration_mixed_by_single = area_mixed_host / area_single_host,
-          mean_area_host = mean(area_mine / countlist, na.rm = TRUE),
-          median_area_host = median(area_mine / countlist, na.rm = TRUE),
-          area_mine = sum(area_mine),
+  reframe(area_na = sum(area_mine, na.rm = TRUE),
+          area_na = area_na / area_na,
+          area_known = area_na * sum(area_mine * (!unknown), na.rm = TRUE),
+          area_unknown = area_na * sum(area_mine * (unknown), na.rm = TRUE),
+          area_host = area_na * sum(area_mine * counthost, na.rm = TRUE),
+          area_list = area_na * sum(area_mine * countlist, na.rm = TRUE),
+          area_single_host = area_na * sum(area_mine * (counthost==1), na.rm = TRUE),
+          area_mixed_host = area_na * sum(area_mine * (counthost>1), na.rm = TRUE),
+          area_multi_count = area_na * sum(area_mine * (counthost - 1), na.rm = TRUE),
+          area_mine = area_na * sum(area_mine, na.rm = TRUE),
           perc_area_known = area_known / area_mine,
           perc_area_unknown = area_unknown / area_mine,
           perc_area_host = area_host / area_mine,
           perc_area_list = area_list / area_mine,
           perc_area_mixed_host = area_mixed_host / area_mine,
-          perc_area_multi_count = area_multi_count / area_mine,
-          perc_mean_area_host = mean_area_host / area_mine,
-          perc_median_area_host = median_area_host / area_mine) |>
+          perc_area_multi_count = area_multi_count / area_mine
+          ) |>
           group_by(id_max_threshold) |>
           mutate(distances = sqrt(perc_area_multi_count/max(c(perc_area_multi_count, 1e-12)))^2 + (perc_area_unknown/max(c(perc_area_unknown, 1e-12)))^2,
-                 pareto_index = clust_dist[which.min(distances)]) |>
+                 pareto_index = ifelse(all(is.na(distances)), min(clust_dist), clust_dist[which.min(distances)])) |>
           ungroup()
 
-select(pareto_optimal_point_local, perc_area_known, perc_area_unknown, perc_area_multi_count, distances, pareto_index)
+# select(pareto_optimal_point_local, perc_area_known, perc_area_unknown, perc_area_multi_count, distances, pareto_index)
 
 pareto_optimal_point_local_summary <- select(pareto_optimal_point_local, clust_dist, pareto_index, area_mine, area_known, area_unknown, area_multi_count) |>
   filter(clust_dist == pareto_index) |>
-  summarise(across(all_of(starts_with("area")), sum)) |>
+  summarise(across(all_of(starts_with("area")), sum, na.rm = TRUE)) |>
   mutate(
       perc_area_known = area_known / area_mine,
       perc_area_unknown = area_unknown / area_mine,
@@ -148,7 +163,7 @@ gp <- select(pareto_optimal_point_local, id_max_threshold, clust_dist, pareto_in
       x = "Cluster Threshold Distance (km)"
     ) 
 
-ggsave(filename = str_c("./output/fig-optimal-threshold-distribution-primary-materials.png"), plot = gp, bg = "#ffffff",
+ggsave(filename = str_c(path_output, "/fig-optimal-threshold-distribution-primary-materials.png"), plot = gp, bg = "#ffffff",
        width = 345, height = 140, units = "mm", scale = 1)
 
 optimal_point <- bind_rows(pareto_optimal_point_local_summary, pareto_optimal_point_global_summary) |>
@@ -188,7 +203,7 @@ gp <- pareto_optimal_point_global |>
     plot.subtitle = element_text(size = 10)
   )
 
-ggsave(filename = str_c("./output/fig-threshold-optimization-primary-materials.png"), plot = gp, bg = "#ffffff",
+ggsave(filename = str_c(path_output, "/fig-threshold-optimization-primary-materials.png"), plot = gp, bg = "#ffffff",
        width = 345, height = 140, units = "mm", scale = 1)
 
 local_thr <- pareto_optimal_point_local |>
@@ -205,30 +220,26 @@ global_thr <- hcluster_concordance |>
   select(-clust) |>
   mutate(clust_dist = as.numeric(clust_dist)) |>
   pivot_wider(names_from = var, values_from = value) |>
-  mutate(area_mine_adj = area_mine / ifelse(is.na(counthost), 1, counthost)) |>
   rename(unknown = host) |>
   group_by(id_cluster) |>
-  reframe(
-          area_known = sum(area_mine * (!unknown)),
-          area_unknown = sum(area_mine * (unknown)),
-          area_multi_count = sum(area_mine * (counthost - 1), na.rm = TRUE),
-          area_mine = sum(area_mine),
-          area_host = sum(area_mine * counthost, na.rm = TRUE),
-          area_single_host = sum(area_mine * (counthost==1), na.rm = TRUE),
-          area_mixed_host = sum(area_mine * (counthost>1), na.rm = TRUE),
-          area_multi_count = sum(area_mine * (counthost - 1), na.rm = TRUE),
-          ration_mixed_by_single = area_mixed_host / area_single_host,
-          area_mine = sum(area_mine),
+  reframe(area_na = sum(area_mine, na.rm = TRUE),
+          area_na = area_na / area_na,
+          area_known = area_na * sum(area_mine * (!unknown), na.rm = TRUE),
+          area_unknown = area_na * sum(area_mine * (unknown), na.rm = TRUE),
+          area_host = area_na * sum(area_mine * counthost, na.rm = TRUE),
+          area_single_host = area_na * sum(area_mine * (counthost==1), na.rm = TRUE),
+          area_mixed_host = area_na * sum(area_mine * (counthost>1), na.rm = TRUE),
+          area_multi_count = area_na * sum(area_mine * (counthost - 1), na.rm = TRUE),
+          area_mine = area_na * sum(area_mine, na.rm = TRUE),
           perc_area_known = area_known / area_mine,
           perc_area_unknown = area_unknown / area_mine,
           perc_area_host = area_host / area_mine,
           perc_area_mixed_host = area_mixed_host / area_mine,
-          perc_area_multi_count = area_multi_count / area_mine) |>
-          select(perc_area_known, perc_area_unknown, perc_area_multi_count, area_known, area_unknown, area_multi_count)
-
+          perc_area_multi_count = area_multi_count / area_mine
+          ) |>
+  select(perc_area_known, perc_area_unknown, perc_area_multi_count, area_known, area_unknown, area_multi_count)
 
 #### Comparing distribution of multiple counts using difference approaches to define the threshold
-
 compare_area_multi_count <- bind_rows(
   global_thr |>
     mutate(approach = "Global"),
@@ -247,29 +258,8 @@ compare_area_unknown <- bind_rows(
   filter(area_unknown > 0) |>
   select(approach, area = area_unknown)
 
-# Check normality for each group and variable
-
-#The data is not normally distributed.
-#The variances are not equal.
-#The sample sizes are large.
-# Use: Wilcoxon Rank Sum Test to compare the approaches
-
-
 
 ### Area of multiple primary materials
-
-group_by(compare_area_multi_count, approach) |>
-  summarise(median(area))
-
-shapiro.test(filter(compare_area_multi_count, approach == "Global")$area)
-shapiro.test(filter(compare_area_multi_count, approach == "Local")$area)
-leveneTest(area ~ approach, data = compare_area_multi_count)
-wilcox.test(area ~ approach, data = compare_area_multi_count)
-
-compare_area_multi_count |>
-  group_by(approach) |>
-  summarize(median_value = median(area, na.rm = TRUE))
-
 gp <- ggplot(compare_area_multi_count, aes(x = area, fill = approach)) +
   geom_histogram(position = "identity", alpha = 0.5, bins = 30) +
   labs(x = "Area assigned to multiple primary materials (Log10 transformed)",
@@ -282,22 +272,10 @@ gp <- ggplot(compare_area_multi_count, aes(x = area, fill = approach)) +
     legend.position.inside = c(.8, .8),
   )
 
-ggsave(filename = str_c("./output/fig-distribution-area-multiple-primary-materials.png"), plot = gp, bg = "#ffffff",
+ggsave(filename = str_c(path_output, "/fig-distribution-area-multiple-primary-materials.png"), plot = gp, bg = "#ffffff",
        width = 140, height = 140, units = "mm", scale = 1)
 
 ### Area with unknown materials
-
-group_by(compare_area_unknown, approach) |>
-  summarise(median(area))
-
-shapiro.test(sample(filter(compare_area_unknown, approach == "Global")$area, 5000))
-shapiro.test(sample(filter(compare_area_unknown, approach == "Local")$area, 5000))
-leveneTest(area ~ approach, data = compare_area_unknown)
-wilcox.test(area ~ approach, data = compare_area_unknown)
-
-compare_area_unknown |>
-  group_by(approach) |>
-  summarize(median_value = median(area, na.rm = TRUE))
 
 gp <- ggplot(compare_area_unknown, aes(x = area, fill = approach)) +
   geom_histogram(position = "identity", alpha = 0.5, bins = 30) +
@@ -311,9 +289,10 @@ gp <- ggplot(compare_area_unknown, aes(x = area, fill = approach)) +
     legend.position.inside = c(.8, .8),
   )
 
-ggsave(filename = str_c("./output/fig-distribution-area-unknown-materials.png"), plot = gp, bg = "#ffffff",
+ggsave(filename = str_c(path_output, "/fig-distribution-area-unknown-materials.png"), plot = gp, bg = "#ffffff",
        width = 140, height = 140, units = "mm", scale = 1)
 
+################ Assemble final cluster concordance table using local optimal 
 selected_threshold <- pareto_optimal_point_local |>
   filter(clust_dist == pareto_index) |>
   select(id_max_threshold, pareto_index)
@@ -355,8 +334,21 @@ gp <- final_cluster_concordance |>
     legend.position.inside = c(.8, .8),
   )
 
-ggsave(filename = str_c("./output/fig-distribution-number-assigned-materials.png"), plot = gp, bg = "#ffffff",
+ggsave(filename = str_c(path_output, "/fig-distribution-number-assigned-materials.png"), plot = gp, bg = "#ffffff",
        width = 140, height = 140, units = "mm", scale = 1)
 
-write_csv(final_cluster_concordance, "./output/mine_clusters_concordance.csv")
+mine_polygons <- st_read("./data/cluster_data.gpkg") |>
+  filter(str_detect(id, "A")) |>
+  select(id, data_source, area_mine) |>
+  left_join(select(final_cluster_concordance, -area_mine))  |>
+  select(id, id_cluster, data_source, area_mine, primary_materials_list, materials_list, geom)
 
+mine_points <- st_read("./data/cluster_data.gpkg") |>
+  filter(str_detect(id, "P")) |>
+  select(id, data_source, id_data_source) |>
+  left_join(select(final_cluster_concordance, -area_mine))  |>
+  select(id, id_cluster, data_source, primary_materials_list, materials_list, geom)
+
+st_write(mine_polygons, dsn = str_c(path_output, "/mine_polygons.gpkg"), layer = "mine_polygons", delete_dsn = TRUE)
+st_write(mine_points, dsn = str_c(path_output, "/mine_points.gpkg"), layer = "mine_polygons", delete_dsn = TRUE)
+write_csv(final_cluster_concordance, str_c(path_output, "/mine_clusters.csv"))
