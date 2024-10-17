@@ -22,7 +22,6 @@ dist_matrix_dir <- "./data/dist_matrix"
 hcluster_results_path = "./data/hcluster"
 h <- units::set_units(seq(1, 20, 1), km)
 
-
 # ------------------------------------------------------------------------------
 # set cluster 
 cl <- makeCluster(parallel::detectCores(), type = "FORK")
@@ -140,8 +139,8 @@ hcluster_concordance <- foreach(
     group_by(id_batch, id_group, !!sym(col_name)) |> 
     transmute(id,
               !!sym(col_name) := str_c("H", str_pad(cur_group_id(), pad = "0", width = 7)),
-              !!sym(str_c("primary_comm_list_", str_remove_all(col_name, "id_"))) := collapse_groups(primary_commodity),
-              !!sym(str_c("comm_list_", str_remove_all(col_name, "id_"))) := collapse_groups(commodities_list)
+              !!sym(str_c("primary_", str_remove_all(col_name, "id_"))) := collapse_groups(primary_commodity),
+              !!sym(str_c("list_", str_remove_all(col_name, "id_"))) := collapse_groups(commodities_list)
               ) |>
     ungroup()
 }

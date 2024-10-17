@@ -8,14 +8,13 @@
 # the maximum distance for the global optimization 
 max_global_threshold <- 20
 # the maximum distance for the local optimization 
-max_local_threshold <- 8
+max_local_threshold <- 10
 # concordance table to harmonise materials. Set to NULL to keep as they are
 path_harmonisation_table <- "./data/harmonisation_all_materials.csv"
 # set version of the data output
 release_version_name <- "all_materials"
 release_version_date <- format(Sys.Date(), '%Y%m%d')
 ################################################################################
-
 
 # Require libraries
 library(sf)
@@ -45,7 +44,7 @@ if(!is.null(path_harmonisation_table)){
   source("./R/harmonize_materials.R")
   mapping_table <- read_csv(path_harmonisation_table)
   hcluster_concordance <- hcluster_concordance |>
-    mutate(across(all_of(starts_with("host_")), ~ harmonize_materials(.x, mapping_table, col_from = "material", col_to = "material_harmonized")),
+    mutate(across(all_of(starts_with("primary_")), ~ harmonize_materials(.x, mapping_table, col_from = "material", col_to = "material_harmonized")),
            across(all_of(starts_with("list_")), ~ harmonize_materials(.x, mapping_table, col_from = "material", col_to = "material_harmonized")))
 }
 
@@ -53,16 +52,16 @@ if(!is.null(path_harmonisation_table)){
 materials_area_global <- hcluster_concordance |>
   mutate(id_max_threshold := !!sym(str_c("id_hc_", max_global_threshold))) |>
   transmute(id, area_mine,
-            across(all_of(starts_with("host_")), ~ str_count(.x, ",") + 1, .names = "count{.col}"),
+            across(all_of(starts_with("primary_")), ~ str_count(.x, ",") + 1, .names = "count{.col}"),
             across(all_of(starts_with("list_")), ~ str_count(.x, ",") + 1, .names = "count{.col}"),
-            across(all_of(starts_with("host_")), ~ is.na(.x))) |>
+            across(all_of(starts_with("primary_")), ~ is.na(.x))) |>
   select(-starts_with("list_")) |>
-  pivot_longer(all_of(matches("host|list")), names_to = c("var", "clust", "clust_dist"), values_to = "value", names_sep = "_") |>
+  pivot_longer(all_of(matches("primary|list")), names_to = c("var", "clust", "clust_dist"), values_to = "value", names_sep = "_") |>
   select(-clust) |>
   mutate(clust_dist = as.numeric(clust_dist)) |>
   filter(clust_dist <= max_global_threshold) |>
   pivot_wider(names_from = var, values_from = value) |>
-  rename(unknown = host)
+  rename(unknown = primary)
 
 pareto_optimal_point_global <- materials_area_global |>
   group_by(clust_dist) |>
@@ -70,17 +69,17 @@ pareto_optimal_point_global <- materials_area_global |>
           area_na = area_na / area_na,
           area_known = area_na * sum(area_mine * (!unknown), na.rm = TRUE),
           area_unknown = area_na * sum(area_mine * (unknown), na.rm = TRUE),
-          area_host = area_na * sum(area_mine * counthost, na.rm = TRUE),
+          area_primary = area_na * sum(area_mine * countprimary, na.rm = TRUE),
           area_list = area_na * sum(area_mine * countlist, na.rm = TRUE),
-          area_single_host = area_na * sum(area_mine * (counthost==1), na.rm = TRUE),
-          area_mixed_host = area_na * sum(area_mine * (counthost>1), na.rm = TRUE),
-          area_multi_count = area_na * sum(area_mine * (counthost - 1), na.rm = TRUE),
+          area_single_primary = area_na * sum(area_mine * (countprimary==1), na.rm = TRUE),
+          area_mixed_primary = area_na * sum(area_mine * (countprimary>1), na.rm = TRUE),
+          area_multi_count = area_na * sum(area_mine * (countprimary - 1), na.rm = TRUE),
           area_mine = area_na * sum(area_mine, na.rm = TRUE),
           perc_area_known = area_known / area_mine,
           perc_area_unknown = area_unknown / area_mine,
-          perc_area_host = area_host / area_mine,
+          perc_area_primary = area_primary / area_mine,
           perc_area_list = area_list / area_mine,
-          perc_area_mixed_host = area_mixed_host / area_mine,
+          perc_area_mixed_primary = area_mixed_primary / area_mine,
           perc_area_multi_count = area_multi_count / area_mine
           ) |>
           mutate(distances = sqrt(perc_area_multi_count/max(c(perc_area_multi_count, 1e-12)))^2 + (perc_area_unknown/max(c(perc_area_unknown, 1e-12)))^2,
@@ -92,16 +91,16 @@ pareto_optimal_point_global <- materials_area_global |>
 materials_area_local <- hcluster_concordance |>
   mutate(id_max_threshold := !!sym(str_c("id_hc_", max_local_threshold))) |>
   transmute(id, id_max_threshold, area_mine,
-            across(all_of(starts_with("host_")), ~ str_count(.x, ",") + 1, .names = "count{.col}"),
+            across(all_of(starts_with("primary_")), ~ str_count(.x, ",") + 1, .names = "count{.col}"),
             across(all_of(starts_with("list_")), ~ str_count(.x, ",") + 1, .names = "count{.col}"),
-            across(all_of(starts_with("host_")), ~ is.na(.x))) |>
+            across(all_of(starts_with("primary_")), ~ is.na(.x))) |>
   select(-starts_with("list_")) |>
-  pivot_longer(all_of(matches("host|list")), names_to = c("var", "clust", "clust_dist"), values_to = "value", names_sep = "_") |>
-    select(-clust) |>
+  pivot_longer(all_of(matches("primary|list")), names_to = c("var", "clust", "clust_dist"), values_to = "value", names_sep = "_") |>
+  select(-clust) |>
   mutate(clust_dist = as.numeric(clust_dist)) |>
   filter(clust_dist <= max_local_threshold) |>
   pivot_wider(names_from = var, values_from = value) |>
-  rename(unknown = host)
+  rename(unknown = primary)
 
 pareto_optimal_point_local <- materials_area_local |>
   group_by(clust_dist, id_max_threshold) |>
@@ -109,17 +108,17 @@ pareto_optimal_point_local <- materials_area_local |>
           area_na = area_na / area_na,
           area_known = area_na * sum(area_mine * (!unknown), na.rm = TRUE),
           area_unknown = area_na * sum(area_mine * (unknown), na.rm = TRUE),
-          area_host = area_na * sum(area_mine * counthost, na.rm = TRUE),
+          area_primary = area_na * sum(area_mine * countprimary, na.rm = TRUE),
           area_list = area_na * sum(area_mine * countlist, na.rm = TRUE),
-          area_single_host = area_na * sum(area_mine * (counthost==1), na.rm = TRUE),
-          area_mixed_host = area_na * sum(area_mine * (counthost>1), na.rm = TRUE),
-          area_multi_count = area_na * sum(area_mine * (counthost - 1), na.rm = TRUE),
+          area_single_primary = area_na * sum(area_mine * (countprimary==1), na.rm = TRUE),
+          area_mixed_primary = area_na * sum(area_mine * (countprimary>1), na.rm = TRUE),
+          area_multi_count = area_na * sum(area_mine * (countprimary - 1), na.rm = TRUE),
           area_mine = area_na * sum(area_mine, na.rm = TRUE),
           perc_area_known = area_known / area_mine,
           perc_area_unknown = area_unknown / area_mine,
-          perc_area_host = area_host / area_mine,
+          perc_area_primary = area_primary / area_mine,
           perc_area_list = area_list / area_mine,
-          perc_area_mixed_host = area_mixed_host / area_mine,
+          perc_area_mixed_primary = area_mixed_primary / area_mine,
           perc_area_multi_count = area_multi_count / area_mine
           ) |>
           group_by(id_max_threshold) |>
@@ -214,27 +213,27 @@ global_thr <- hcluster_concordance |>
   mutate(id_max_threshold := !!sym(str_c("id_hc_", max_global_threshold))) |>
   select(id, id_max_threshold, area_mine, ends_with(str_c("hc_", pareto_optimal_point_global_summary$clust_dist))) |>
   transmute(id, id_max_threshold, area_mine, id_cluster = !!sym(str_c("id_hc_", pareto_optimal_point_global_summary$clust_dist)),
-            across(all_of(starts_with("host_")), ~ str_count(.x, ",") + 1, .names = "count{.col}"),
-            across(all_of(starts_with("host_")), ~ is.na(.x))) |>
-  pivot_longer(all_of(matches("host|list")), names_to = c("var", "clust", "clust_dist"), values_to = "value", names_sep = "_") |>
+            across(all_of(starts_with("primary_")), ~ str_count(.x, ",") + 1, .names = "count{.col}"),
+            across(all_of(starts_with("primary_")), ~ is.na(.x))) |>
+  pivot_longer(all_of(matches("primary|list")), names_to = c("var", "clust", "clust_dist"), values_to = "value", names_sep = "_") |>
   select(-clust) |>
   mutate(clust_dist = as.numeric(clust_dist)) |>
   pivot_wider(names_from = var, values_from = value) |>
-  rename(unknown = host) |>
+  rename(unknown = primary) |>
   group_by(id_cluster) |>
   reframe(area_na = sum(area_mine, na.rm = TRUE),
           area_na = area_na / area_na,
           area_known = area_na * sum(area_mine * (!unknown), na.rm = TRUE),
           area_unknown = area_na * sum(area_mine * (unknown), na.rm = TRUE),
-          area_host = area_na * sum(area_mine * counthost, na.rm = TRUE),
-          area_single_host = area_na * sum(area_mine * (counthost==1), na.rm = TRUE),
-          area_mixed_host = area_na * sum(area_mine * (counthost>1), na.rm = TRUE),
-          area_multi_count = area_na * sum(area_mine * (counthost - 1), na.rm = TRUE),
+          area_primary = area_na * sum(area_mine * countprimary, na.rm = TRUE),
+          area_single_primary = area_na * sum(area_mine * (countprimary==1), na.rm = TRUE),
+          area_mixed_primary = area_na * sum(area_mine * (countprimary>1), na.rm = TRUE),
+          area_multi_count = area_na * sum(area_mine * (countprimary - 1), na.rm = TRUE),
           area_mine = area_na * sum(area_mine, na.rm = TRUE),
           perc_area_known = area_known / area_mine,
           perc_area_unknown = area_unknown / area_mine,
-          perc_area_host = area_host / area_mine,
-          perc_area_mixed_host = area_mixed_host / area_mine,
+          perc_area_primary = area_primary / area_mine,
+          perc_area_mixed_primary = area_mixed_primary / area_mine,
           perc_area_multi_count = area_multi_count / area_mine
           ) |>
   select(perc_area_known, perc_area_unknown, perc_area_multi_count, area_known, area_unknown, area_multi_count)
@@ -296,22 +295,31 @@ ggsave(filename = str_c(path_output, "/fig-distribution-area-unknown-materials.p
 selected_threshold <- pareto_optimal_point_local |>
   filter(clust_dist == pareto_index) |>
   select(id_max_threshold, pareto_index)
-  
-final_clusters <- select(materials_area_local, id, id_max_threshold, clust_dist) |>
+
+local_ids <- hcluster_concordance |>
+  mutate(id_max_threshold := !!sym(str_c("id_hc_", max_local_threshold))) |>
+  select(starts_with('id')) |>
+  pivot_longer(all_of(matches("id_hc_")), names_to = c("var", "clust", "clust_dist"), values_to = "value", names_sep = "_") |>
+  select(-c(var, clust)) |>
   left_join(selected_threshold) |>
   filter(clust_dist == pareto_index) |>
-  group_by(id_max_threshold, pareto_index) |>
+  select(id, id_cluster = value, pareto_index)
+
+final_clusters <- select(materials_area_local, id, id_max_threshold, clust_dist) |>
+  left_join(local_ids) |>
+  filter(clust_dist == pareto_index) |>
+  group_by(id_max_threshold, id_cluster, pareto_index) |>
   mutate(id_cluster = str_c("H", str_pad(cur_group_id(), width = 7, pad = 0))) |>
   ungroup() |>
   select(id, id_cluster, dist_threshold = clust_dist)
 
 final_cluster_concordance <- hcluster_concordance |>
   select(-starts_with("id_hc"), -id_group) |>
-  pivot_longer(all_of(matches("host|list")), names_to = c("var", "clust", "clust_dist"), values_to = "value", names_sep = "_") |>
+  pivot_longer(all_of(matches("primary|list")), names_to = c("var", "clust", "clust_dist"), values_to = "value", names_sep = "_") |>
   select(-clust) |>
   mutate(clust_dist = as.numeric(clust_dist)) |>
   pivot_wider(names_from = "var", values_from = "value") |>
-  rename(primary_materials_list = host, materials_list = list) |>
+  rename(primary_materials_list = primary, materials_list = list) |>
   left_join(final_clusters) |>
   filter(clust_dist == dist_threshold) |>
   select(id, id_cluster, dist_threshold, primary_materials_list, materials_list, area_mine)
