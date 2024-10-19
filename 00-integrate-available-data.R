@@ -136,12 +136,14 @@ if (!file.exists("./data/mining_properties.gpkg")) {
     jasansky <- st_read("./data/jasansky/data/facilities.gpkg") |>
         select(id_data_source = facility_id, primary_commodity, commodities_list = commodities_products) |>
         mutate(commodities_list = str_replace_all(commodities_list, ", ", ","), data_source = "Jasansky et al. 2022") |>
-        filter(primary_commodity != "Processing")
+        filter(primary_commodity != "Processing") |>
+        st_cast("POINT")
 
     # Read mining properties from S&P
     sp <- st_read("./data/snl2020.gpkg") |>
         select(id_data_source = snl_id, primary_commodity, commodities_list = list_of_commodities) |>
-        mutate(data_source = "S&P")
+        mutate(data_source = "S&P") |>
+        st_cast("POINT")
 
     # Read mining properties from GEM
     # GEM data issues:
@@ -162,7 +164,8 @@ if (!file.exists("./data/mining_properties.gpkg")) {
         bind_rows(gem) |>
         filter(!(is.na(latitude) | is.na(longitude))) |>
         st_as_sf(coords = c("longitude", "latitude"), crs = 4326, sf_column_name = "geom") |>
-        mutate(primary_commodity = "Coal", commodities_list = "Coal", data_source = "GEM - Coal Mine Tracker")
+        mutate(primary_commodity = "Coal", commodities_list = "Coal", data_source = "GEM - Coal Mine Tracker") |>
+        st_cast("POINT")
 
     # Merge mining properties
     mining_properties <- bind_rows(jasansky, sp) |>
@@ -171,7 +174,7 @@ if (!file.exists("./data/mining_properties.gpkg")) {
         select(id, id_data_source, primary_commodity, commodities_list, data_type, data_source, geom) |>
         filter(!st_is_empty(geom))
 
-    st_write(mining_properties, dsn = "./data/mining_properties.gpkg")
+    st_write(mining_properties, dsn = "./data/mining_properties.gpkg", delete_dsn = TRUE)
 
 } else {
    mining_properties <- st_read(dsn = "./data/mining_properties.gpkg")
@@ -213,7 +216,7 @@ if (!file.exists("./data/cluster_data.gpkg")) {
     membership_df <- data.frame(
         feature_index = as.integer(V(g)),
         id_group = membership,
-        id_batch = 
+        id_batch = NA_integer_
     )
 
     # Assign id_group to cluster_data
@@ -241,7 +244,7 @@ if (!file.exists("./data/cluster_data.gpkg")) {
         mutate(
             id_batch = if_else(is_large_group, NA_integer_, 0L),
             cum_size = cumsum(if_else(is_large_group, 0L, group_size)),
-            id_batch = if_else(is_large_group, row_number() + max(id_group_sizes$id_batch, na.rm = TRUE), ceiling(cum_size / max_batch_size))
+            id_batch = if_else(is_large_group, row_number() + max(id_batch, na.rm = TRUE), ceiling(cum_size / max_batch_size))
         ) |>
         select(id_group, id_batch)
 

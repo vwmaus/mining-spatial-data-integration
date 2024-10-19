@@ -23,11 +23,6 @@ hcluster_results_path = "./data/hcluster"
 h <- units::set_units(seq(1, 20, 1), km)
 
 # ------------------------------------------------------------------------------
-# set cluster 
-cl <- makeCluster(parallel::detectCores(), type = "FORK")
-registerDoParallel(cl)
-
-# ------------------------------------------------------------------------------
 # get batch list
 batch_list <- 
   st_read(dsn = cluster_data_path, quiet = TRUE, query = str_c("SELECT ",cluster_data_split_at," FROM ", cluster_data_layer)) |> 
@@ -36,6 +31,11 @@ batch_list <-
   arrange(id_batch) |>
   drop_na() |>
   unlist()
+
+# ------------------------------------------------------------------------------
+# set cluster 
+cl <- makeCluster(parallel::detectCores(), type = "FORK")
+registerDoParallel(cl)
 
 # ------------------------------------------------------------------------------
 # calculate distance matrix per batch in parallel
@@ -66,9 +66,9 @@ hc_file_list <- foreach(
   
   cat("Processing batch",id_batch, "\n")
   hc_file <- str_glue("{hcluster_results_path}/batch_{stringr::str_pad(id_batch, width = 4, pad = 0)}.csv")
-  
+
   if(!file.exists(hc_file)){
-    
+
     out <- st_read(dsn = cluster_data_path, 
                    query = str_c("SELECT id, id_group FROM ",cluster_data_layer," WHERE ",cluster_data_split_at," = '", id_batch, "'"), quiet = TRUE) |>
       as_tibble() 
@@ -77,31 +77,37 @@ hc_file_list <- foreach(
     if(nrow(out) > 1){
       
       cat("    preparing dist matrix...", "\n")
-      dist_mat <- readRDS(stringr::str_glue("{dist_matrix_dir}/batch_{stringr::str_pad(id_batch, width = 4, pad = 0)}.rds"))
-      # ii = which(out$id %in% slice(filter(out, id_group == unique(out$id_group)[1]), 1:7)$id)
-      # jj = which(out$id %in% slice(filter(out, id_group == unique(out$id_group)[2]), 1:7)$id)
-      # dist_mat <- dist_mat[c(ii,jj),c(ii,jj)]
-      dist_mat <- as.matrix(t(dist_mat))
-      dist_mat[dist_mat == 0 & row(dist_mat) != col(dist_mat)] <- Inf
-      dist_mat <- as.dist(dist_mat)
+      mat <- readRDS(stringr::str_glue("{dist_matrix_dir}/batch_{stringr::str_pad(id_batch, width = 4, pad = 0)}.rds"))
       
       cat("    computing hcluster for all h levels...", "\n")
-      cluster_ids <- sapply(h, function(k){
-        fastcluster::hclust(dist_mat, method = "single") |> 
-          cutree(h = as.numeric(units::set_units(k, m))) # dist matrix are in metres
-      })
-      
-      cat("    tidying hcluster results...", "\n")
-      cluster_ids <- as_tibble(cbind(str_sub(row.names(cluster_ids), start = 1L, end = 8L), cluster_ids), .name_repair = ~ c("id", str_c("id_hc_", h)))
+      cluster_ids <- foreach(
+        k = h,
+        .combine = 'left_join'
+      ) %dopar% {
+          do.call("bind_rows", lapply(unique(out$id_group), function(g){
+            g_ids <- sort(out$id[out$id_group==g])
+            g_mat <- t(mat[g_ids,g_ids])
+            diag(g_mat) <- 0
+            dist_mat <- structure(g_mat@x, Size = length(g_ids), class = "dist", Labels = g_ids, Diag = FALSE, Upper = FALSE)
+            cl <- fastcluster::hclust(dist_mat, method = "single") |> 
+              cutree(h = as.numeric(units::set_units(k, m))) # dist matrix are in metres
+            tibble(id = g_ids, id_group = g, cl)
+          })) |>
+            group_by(id_group, cl) |>
+            mutate(!!sym(str_c("id_hc_", k)) := cur_group_id()) |>
+            ungroup() |>
+            select(-cl)
+      }
+
     } else {
       cat("    tidying hcluster results...", "\n")
       cluster_ids <- tibble(id = as.character(rep(1, length(h))), col_name = str_c("id_hc_", h)) |>
         pivot_wider(values_from = id, names_from = col_name) |>
-        mutate(id = out$id, .before = 1)
+        mutate(id = out$id, id_group = out$id_group, .before = 1)
     }
     
     cat("    writing hcluster results to",hc_file, "\n")
-    left_join(out, cluster_ids, by = join_by("id")) |>
+    left_join(out, cluster_ids, by = join_by("id", "id_group")) |>
       write_csv(file = hc_file)
     
   } else {
