@@ -76,31 +76,33 @@ hc_file_list <- foreach(
     # Compute cluster ids
     if(nrow(out) > 1){
       
-      cat("    preparing dist matrix...", "\n")
+      cat("    reading dist matrix...", "\n")
       mat <- readRDS(stringr::str_glue("{dist_matrix_dir}/batch_{stringr::str_pad(id_batch, width = 4, pad = 0)}.rds"))
       
-      cat("    computing hcluster for all h levels...", "\n")
+      cat("    loop over all h levels...", "\n")
       cluster_ids <- foreach(
         k = h,
         .combine = 'left_join'
-      ) %dopar% {
-          do.call("bind_rows", lapply(unique(out$id_group), function(g){
-            g_ids <- sort(out$id[out$id_group==g])
-            g_mat <- t(mat[g_ids,g_ids])
-            diag(g_mat) <- 0
-            dist_mat <- structure(g_mat@x, Size = length(g_ids), class = "dist", Labels = g_ids, Diag = FALSE, Upper = FALSE)
-            cl <- fastcluster::hclust(dist_mat, method = "single") |> 
-              cutree(h = as.numeric(units::set_units(k, m))) # dist matrix are in metres
-            tibble(id = g_ids, id_group = g, cl)
-          })) |>
-            group_by(id_group, cl) |>
-            mutate(!!sym(str_c("id_hc_", k)) := cur_group_id()) |>
-            ungroup() |>
-            select(-cl)
+      ) %do% {
+        cat("    computing hcluster with h ", k, "\n")
+        do.call("bind_rows", lapply(unique(out$id_group), function(g){
+          g_ids <- sort(out$id[out$id_group==g])
+          g_mat <- t(mat[g_ids,g_ids])
+          diag(g_mat) <- 0
+          if(nrow(g_mat)==1) return(tibble(id = g_ids, id_group = g, cl = 1))
+          dist_mat <- structure(g_mat@x, Size = length(g_ids), class = "dist", Labels = g_ids, Diag = FALSE, Upper = FALSE)
+          cl <- fastcluster::hclust(dist_mat, method = "single") |> 
+            cutree(h = as.numeric(units::set_units(k, m))) # dist matrix are in metres
+          tibble(id = g_ids, id_group = g, cl)
+        })) |>
+          group_by(id_group, cl) |>
+          mutate(!!sym(str_c("id_hc_", k)) := cur_group_id()) |>
+          ungroup() |>
+          select(-cl)
       }
 
     } else {
-      cat("    tidying hcluster results...", "\n")
+      cat("    add single hcluster...", "\n")
       cluster_ids <- tibble(id = as.character(rep(1, length(h))), col_name = str_c("id_hc_", h)) |>
         pivot_wider(values_from = id, names_from = col_name) |>
         mutate(id = out$id, id_group = out$id_group, .before = 1)
@@ -111,7 +113,7 @@ hc_file_list <- foreach(
       write_csv(file = hc_file)
     
   } else {
-    cat("    skiping existing file", hc_file, "\n")
+    cat("    skipping existing file", hc_file, "\n")
   }
   
   cat("Done", "\n")

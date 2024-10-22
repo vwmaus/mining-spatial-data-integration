@@ -130,7 +130,7 @@ pareto_optimal_point_local <- materials_area_local |>
 
 pareto_optimal_point_local_summary <- select(pareto_optimal_point_local, clust_dist, pareto_index, area_mine, area_known, area_unknown, area_multi_count) |>
   filter(clust_dist == pareto_index) |>
-  summarise(across(all_of(starts_with("area")), sum, na.rm = TRUE)) |>
+  summarise(across(all_of(starts_with("area")), ~sum(.x, na.rm = TRUE))) |>
   mutate(
       perc_area_known = area_known / area_mine,
       perc_area_unknown = area_unknown / area_mine,
@@ -140,7 +140,7 @@ pareto_optimal_point_local_summary <- select(pareto_optimal_point_local, clust_d
 
 pareto_optimal_point_global_summary <- select(pareto_optimal_point_global, clust_dist, pareto_index, area_mine, area_known, area_unknown, area_multi_count) |>
   filter(clust_dist == pareto_index) |>
-  summarise(across(all_of(starts_with("area")), sum), clust_dist = as.character(clust_dist)) |>
+  summarise(across(all_of(starts_with("area")), ~sum(.x)), clust_dist = as.character(clust_dist)) |>
   mutate(
       perc_area_known = area_known / area_mine,
       perc_area_unknown = area_unknown / area_mine,

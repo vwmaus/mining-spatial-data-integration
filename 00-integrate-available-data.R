@@ -137,10 +137,16 @@ if (!file.exists("./data/mining_properties.gpkg")) {
         select(id_data_source = facility_id, primary_commodity, commodities_list = commodities_products) |>
         mutate(commodities_list = str_replace_all(commodities_list, ", ", ","), data_source = "Jasansky et al. 2022") |>
         filter(primary_commodity != "Processing") |>
+        mutate(base_id = str_extract(id_data_source, "^[^.]+"), ending_number = as.integer(str_extract(id_data_source, "(?<=\\.)\\d+$"))) |>
+        group_by(base_id) |>
+        mutate(has_subentries = any(ending_number > 0)) |>
+        ungroup() |>
+        filter(!(ending_number == 0 & has_subentries)) |>
+        select(-base_id, -ending_number, -has_subentries) |>
         st_cast("POINT")
 
     # Read mining properties from S&P
-    sp <- st_read("./data/snl2020.gpkg") |>
+    sp <- st_read("./data/snl2020.gpkg", layer = "mining_commodities") |>
         select(id_data_source = snl_id, primary_commodity, commodities_list = list_of_commodities) |>
         mutate(data_source = "S&P") |>
         st_cast("POINT")
