@@ -378,7 +378,7 @@ material_expanded |>
   mutate(n_primary_materials = n_materials, .after = "primary_materials_list") |>
   select(-primary_material, -area_km2, -n_materials, -data_source) |>
   rename(id_polygon = id, primary_commodity = primary_materials_list, n_primary_commodities = n_primary_materials, commodities_list = materials_list, area_mine_km2 = area_mine) |>
-  write_csv(file.path(output_dir, "tbl-s01_mine_area_accounting.csv"))
+  write_csv(file.path(output_dir, "s02-mine_area_accounting.csv"))
 
 data_country |> 
   group_by(country_group) |>
