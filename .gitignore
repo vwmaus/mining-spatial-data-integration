@@ -49,6 +49,7 @@ po/*~
 rsconnect/
 
 # Other files
+tmp/
 data/
 output/
 .vscode/

@@ -37,8 +37,8 @@ yellow_d <- "#f6ae2d"
 path_output <- str_c("./output/", release_version_date, "-", release_version_name)
 dir.create(path_output, recursive = TRUE, showWarnings = FALSE)
 
-hcluster_concordance <- read_csv("./data/hcluster_concordance.csv") |>
-  left_join(st_read(dsn = "./data/cluster_data.gpkg", query = "SELECT id, area_mine FROM cluster_data", quiet = TRUE)) 
+hcluster_concordance <- read_csv("./tmp/hcluster_concordance.csv") |>
+  left_join(st_read(dsn = "./tmp/cluster_data.gpkg", query = "SELECT id, area_mine FROM cluster_data", quiet = TRUE)) 
 
 if(!is.null(path_harmonisation_table)){
   source("./R/harmonize_materials.R")
@@ -345,18 +345,25 @@ gp <- final_cluster_concordance |>
 ggsave(filename = str_c(path_output, "/fig-distribution-number-assigned-materials.png"), plot = gp, bg = "#ffffff",
        width = 140, height = 140, units = "mm", scale = 1)
 
-mine_polygons <- st_read("./data/cluster_data.gpkg") |>
-  filter(str_detect(id, "A")) |>
-  select(id, data_source, area_mine) |>
+cluster_features <- st_read("./tmp/cluster_data.gpkg") |>
+  select(id, data_source, id_data_source, data_source, area_mine) |>
   left_join(select(final_cluster_concordance, -area_mine))  |>
-  select(id, id_cluster, data_source, area_mine, primary_materials_list, materials_list, geom)
+  select(id, id_cluster, id_data_source, data_source, area_mine, primary_materials_list, materials_list, geom)
 
-mine_points <- st_read("./data/cluster_data.gpkg") |>
-  filter(str_detect(id, "P")) |>
-  select(id, data_source, id_data_source) |>
-  left_join(select(final_cluster_concordance, -area_mine))  |>
-  select(id, id_cluster, data_source, primary_materials_list, materials_list, geom)
+release_data <- select(cluster_features, -id_data_source)
 
-st_write(mine_polygons, dsn = str_c(path_output, "/mine_polygons.gpkg"), layer = "mine_polygons", delete_dsn = TRUE)
-st_write(mine_points, dsn = str_c(path_output, "/mine_points.gpkg"), layer = "mine_polygons", delete_dsn = TRUE)
+st_write(release_data, dsn = str_c(path_output, "/cluster_features.gpkg"), layer = "mine_polygons", delete_dsn = TRUE)
+st_write(filter(release_data, str_detect(id, "A")), dsn = str_c(path_output, "/mine_polygons.gpkg"), layer = "mine_polygons", delete_dsn = TRUE)
+st_write(filter(release_data, str_detect(id, "P")), dsn = str_c(path_output, "/mine_points.gpkg"), layer = "mine_points", delete_dsn = TRUE)
 write_csv(final_cluster_concordance, str_c(path_output, "/mine_clusters.csv"))
+
+cluster_features |>
+  select(id, id_cluster, id_data_source, data_source, primary_materials_list, materials_list) |>
+  write_csv(str_c(path_output, "/clusters_datasource_concordance.csv"))
+
+cluster_features |>
+  st_drop_geometry() |>
+  as_tibble() |>
+  filter(str_detect(id, "P")) |>
+  select(id, id_cluster, id_data_source, data_source) |>
+  write_csv(str_c(path_output, "/cluster_points_concordance.csv"))

@@ -14,20 +14,20 @@ source("./R/s2_union_split_agg.R")
 
 ###### Download data sources
 
-if(!dir.exists("./data/jasansky")){
-    download.file("https://zenodo.org/records/7369478/files/open_database_mine_production.zip?download=1", destfile = "./data/jasansky.zip")
-    unzip("./data/jasansky.zip", exdir = "./data/jasansky")
+if(!dir.exists("./tmp/jasansky")){
+    download.file("https://zenodo.org/records/7369478/files/open_database_mine_production.zip?download=1", destfile = "./tmp/jasansky.zip")
+    unzip("./tmp/jasansky.zip", exdir = "./tmp/jasansky")
 }
 
-if(!file.exists("./data/gem.xlsx")){
-    download.file("https://globalenergymonitor.org/wp-content/uploads/2024/04/Global-Coal-Mine-Tracker-April-2024.xlsx", destfile = "./data/gem.xlsx")
+if(!file.exists("./tmp/gem.xlsx")){
+    download.file("https://globalenergymonitor.org/wp-content/uploads/2024/04/Global-Coal-Mine-Tracker-April-2024.xlsx", destfile = "./tmp/gem.xlsx")
 }
 
-if(!file.exists("./data/tang/tang.gpkg")){
-    download.file("https://zenodo.org/api/records/7894216/files-archive", destfile = "./data/tang.zip")
-    unzip("./data/tang.zip", exdir = "./data/tang")
+if(!file.exists("./tmp/tang/tang.gpkg")){
+    download.file("https://zenodo.org/api/records/7894216/files-archive", destfile = "./tmp/tang.zip")
+    unzip("./tmp/tang.zip", exdir = "./tmp/tang")
     sf_use_s2(FALSE) # set FALSE to perform geometry fixing operations
-    st_read("./data/tang/74548_projected\ polygons.shp") |>
+    st_read("./tmp/tang/74548_projected\ polygons.shp") |>
         st_transform(crs = 4326) |>
         select(geom = geometry) |>
         st_cast(to = "POLYGON") |>
@@ -38,26 +38,26 @@ if(!file.exists("./data/tang/tang.gpkg")){
         st_cast("POLYGON") |>
         st_make_valid() |>
         mutate(tang = "Tang & Werner (2023)") |>
-        st_write(dsn = "./data/tang/tang.gpkg", delete_dsn = TRUE)
+        st_write(dsn = "./tmp/tang/tang.gpkg", delete_dsn = TRUE)
     sf_use_s2(TRUE)
 }
 
-if(!file.exists("./data/maus/maus.gpkg")){
-    dir.create("./data/maus", showWarnings = FALSE)
-    download.file("https://download.pangaea.de/dataset/942325/files/global_mining_polygons_v2.gpkg", destfile = "./data/maus/global_mining_polygons_v2.gpkg")
+if(!file.exists("./tmp/maus/maus.gpkg")){
+    dir.create("./tmp/maus", showWarnings = FALSE)
+    download.file("https://download.pangaea.de/dataset/942325/files/global_mining_polygons_v2.gpkg", destfile = "./tmp/maus/global_mining_polygons_v2.gpkg")
     sf_use_s2(FALSE) # set FALSE to perform geometry fixing operations
-    st_read("./data/maus/global_mining_polygons_v2.gpkg") |>
-        bind_rows(st_read("./data/maus/maus_new_polygons.gpkg")) |>
+    st_read("./tmp/maus/global_mining_polygons_v2.gpkg") |>
+        bind_rows(st_read("./tmp/maus/maus_new_polygons.gpkg")) |>
         transmute(maus = "Maus et al. (2022)") |>
         st_transform(crs = 4326) |>
-        st_write(dsn = "./data/maus/maus.gpkg", delete_dsn = TRUE)
+        st_write(dsn = "./tmp/maus/maus.gpkg", delete_dsn = TRUE)
     sf_use_s2(TRUE)
 }
 
-if(!file.exists("./data/osm/osm.gpkg")){
+if(!file.exists("./tmp/osm/osm.gpkg")){
     # Requires OSM data osm_quarry_check_20211125.gpkg
     sf_use_s2(FALSE) # set FALSE to perform geometry fixing operations
-    st_read("./data/osm/osm_quarry_check_20211125.gpkg") |>
+    st_read("./tmp/osm/osm_quarry_check_20211125.gpkg") |>
         st_transform(crs = 4326) |>
         transmute(osm = "OpenStreetMap") |>
         st_cast(to = "POLYGON") |>
@@ -67,23 +67,23 @@ if(!file.exists("./data/osm/osm.gpkg")){
         filter(!st_is_empty(geom)) |>
         st_cast("POLYGON") |>
         st_make_valid() |>
-        st_write(dsn = "./data/osm/osm.gpkg", delete_dsn = TRUE)
+        st_write(dsn = "./tmp/osm/osm.gpkg", delete_dsn = TRUE)
     sf_use_s2(TRUE)
 }
 
 # Integrate mining land use datasets and and remove overlaps
-if(!file.exists("./data/maus_tang_osm.gpkg")){
+if(!file.exists("./tmp/maus_tang_osm.gpkg")){
 
     # Read mining polygons from Maus et al. 2022 + new polygons
-    maus <- st_read("./data/maus/maus.gpkg") |>
+    maus <- st_read("./tmp/maus/maus.gpkg") |>
         select(geom)
 
     # Read mining polygons from Tang & Werner 2023
-    tang <- st_read("./data/tang/tang.gpkg") |>
+    tang <- st_read("./tmp/tang/tang.gpkg") |>
         select(geom)
 
     # Read mining polygons from OpenStreetMap
-    osm <- st_read("./data/osm/osm.gpkg") |>
+    osm <- st_read("./tmp/osm/osm.gpkg") |>
         select(geom)
 
     sf_use_s2(TRUE)
@@ -115,10 +115,10 @@ if(!file.exists("./data/maus_tang_osm.gpkg")){
             ) |>
             select(id, data_type, data_source, area_mine, geom)
 
-    st_write(mining_land_use, "./data/maus_tang_osm.gpkg", delete_dsn = TRUE)
+    st_write(mining_land_use, "./tmp/maus_tang_osm.gpkg", delete_dsn = TRUE)
 
 } else {
-   mining_land_use <- st_read("./data/maus_tang_osm.gpkg")
+   mining_land_use <- st_read("./tmp/maus_tang_osm.gpkg")
 }
 
 # Summary by data sources
@@ -130,10 +130,10 @@ group_by(st_drop_geometry(mining_land_use), data_source) |>
 sum(mining_land_use$area_mine)
 
 # Integrate mining properties
-if (!file.exists("./data/mining_properties.gpkg")) {
+if (!file.exists("./tmp/mining_properties.gpkg")) {
 
     # Read mining properties from Jasansky et al. 2022
-    jasansky <- st_read("./data/jasansky/data/facilities.gpkg") |>
+    jasansky <- st_read("./tmp/jasansky/data/facilities.gpkg") |>
         select(id_data_source = facility_id, primary_commodity, commodities_list = commodities_products) |>
         mutate(commodities_list = str_replace_all(commodities_list, ", ", ","), data_source = "Jasansky et al. 2022") |>
         filter(primary_commodity != "Processing") |>
@@ -143,10 +143,28 @@ if (!file.exists("./data/mining_properties.gpkg")) {
         ungroup() |>
         filter(!(ending_number == 0 & has_subentries)) |>
         select(-base_id, -ending_number, -has_subentries) |>
-        st_cast("POINT")
+        st_cast("POINT") |>
+        mutate(
+            primary_commodity = ifelse(str_detect(primary_commodity, "Other \\(poly\\)-metallic|Other mine")&str_detect(commodities_list, "Gold"), "Gold", primary_commodity),
+            primary_commodity = ifelse(str_detect(primary_commodity, "Other \\(poly\\)-metallic|Other mine")&str_detect(commodities_list, "Platinum"), "Platinum", primary_commodity),
+            primary_commodity = ifelse(str_detect(primary_commodity, "Other \\(poly\\)-metallic|Other mine")&str_detect(commodities_list, "Manganese"), "Manganese", primary_commodity),
+            primary_commodity = ifelse(str_detect(primary_commodity, "Other \\(poly\\)-metallic|Other mine")&str_detect(commodities_list, "PGM"), "PGM", primary_commodity),
+            primary_commodity = ifelse(str_detect(primary_commodity, "Other \\(poly\\)-metallic|Other mine")&str_detect(commodities_list, "Phosphate"), "Phosphate", primary_commodity),
+            primary_commodity = ifelse(str_detect(primary_commodity, "Other \\(poly\\)-metallic|Other mine")&str_detect(commodities_list, "Nickel"), "Nickel", primary_commodity),
+            primary_commodity = ifelse(str_detect(primary_commodity, "Other \\(poly\\)-metallic|Other mine")&str_detect(commodities_list, "Diamonds"), "Diamonds", primary_commodity),
+            primary_commodity = ifelse(str_detect(primary_commodity, "Other \\(poly\\)-metallic|Other mine")&str_detect(commodities_list, "Bauxite"), "Bauxite", primary_commodity),
+            primary_commodity = ifelse(str_detect(primary_commodity, "Other \\(poly\\)-metallic|Other mine")&str_detect(commodities_list, "Copper"), "Copper", primary_commodity),
+            primary_commodity = ifelse(str_detect(primary_commodity, "Other \\(poly\\)-metallic|Other mine")&str_detect(commodities_list, "Lithium"), "Lithium", primary_commodity),
+            primary_commodity = ifelse(str_detect(primary_commodity, "Other \\(poly\\)-metallic|Other mine")&str_detect(commodities_list, "Iron ore"), "Iron ore", primary_commodity),
+            primary_commodity = ifelse(str_detect(primary_commodity, "Other \\(poly\\)-metallic|Other mine")&str_detect(commodities_list, "Molybdenum"), "Molybdenum", primary_commodity),
+            primary_commodity = ifelse(str_detect(primary_commodity, "Other \\(poly\\)-metallic|Other mine")&str_detect(commodities_list, "Niobium"), "Niobium", primary_commodity),
+            primary_commodity = ifelse(str_detect(primary_commodity, "Other \\(poly\\)-metallic|Other mine")&str_detect(commodities_list, "Limestone"), "Limestone", primary_commodity),
+            primary_commodity = ifelse(str_detect(primary_commodity, "Other \\(poly\\)-metallic|Other mine")&str_detect(commodities_list, "Coal|coal"), "Coal", primary_commodity),
+            primary_commodity = ifelse(str_detect(primary_commodity, "Other \\(poly\\)-metallic|Other mine")&str_detect(commodities_list, "Zinc,Lead"), "Lead,Zinc", primary_commodity),
+            primary_commodity = ifelse(str_detect(primary_commodity, "Other \\(poly\\)-metallic|Other mine"), commodities_list, primary_commodity))
 
     # Read mining properties from S&P
-    sp <- st_read("./data/snl2020.gpkg", layer = "mining_commodities") |>
+    sp <- st_read("./tmp/snl2020.gpkg", layer = "mining_commodities") |>
         select(id_data_source = snl_id, primary_commodity, commodities_list = list_of_commodities) |>
         mutate(data_source = "S&P") |>
         st_cast("POINT")
@@ -156,13 +174,13 @@ if (!file.exists("./data/mining_properties.gpkg")) {
     #   - Some NAs are filled with "-"
     #   - Some entries of latitude includes both latitude and longitude separated by comma
     #   - The "GEM Mine ID" is not unique
-    gem <- read_xlsx("./data/gem.xlsx", sheet = 2, na = c("-", "NA", "N/A")) |>
+    gem <- read_xlsx("./tmp/gem.xlsx", sheet = 2, na = c("-", "NA", "N/A")) |>
         select(id_data_source = `GEM Mine ID`, latitude = Latitude, longitude = Longitude) |>
         mutate(
             latitude = as.numeric(str_replace(latitude, ",.*", "")),
             longitude = as.numeric(str_replace(longitude, ",.*", "")))
 
-    gem <- read_xlsx("./data/gem.xlsx", sheet = 3, na = c("-", "NA", "N/A")) |>
+    gem <- read_xlsx("./tmp/gem.xlsx", sheet = 3, na = c("-", "NA", "N/A")) |>
         select(id_data_source = `GEM Mine ID`, latitude = Latitude, longitude = Longitude) |>
         mutate(
             latitude = as.numeric(str_replace(latitude, ",.*", "")),
@@ -180,14 +198,14 @@ if (!file.exists("./data/mining_properties.gpkg")) {
         select(id, id_data_source, primary_commodity, commodities_list, data_type, data_source, geom) |>
         filter(!st_is_empty(geom))
 
-    st_write(mining_properties, dsn = "./data/mining_properties.gpkg", delete_dsn = TRUE)
+    st_write(mining_properties, dsn = "./tmp/mining_properties.gpkg", delete_dsn = TRUE)
 
 } else {
-   mining_properties <- st_read(dsn = "./data/mining_properties.gpkg")
+   mining_properties <- st_read(dsn = "./tmp/mining_properties.gpkg")
 }
 
 # Create cluster data
-if (!file.exists("./data/cluster_data.gpkg")) {
+if (!file.exists("./tmp/cluster_data.gpkg")) {
 
     # Create cluster data including polygons and points
     cluster_data <- bind_rows(mining_land_use, mining_properties)
@@ -256,11 +274,11 @@ if (!file.exists("./data/cluster_data.gpkg")) {
 
     cluster_data <- left_join(cluster_data, id_group_batch)
 
-    st_write(cluster_data, dsn = "./data/cluster_data.gpkg", delete_dsn = TRUE)
+    st_write(cluster_data, dsn = "./tmp/cluster_data.gpkg", delete_dsn = TRUE)
 
 } else {
 
-   cluster_data <- st_read(dsn = "./data/cluster_data.gpkg")
+   cluster_data <- st_read(dsn = "./tmp/cluster_data.gpkg")
 
 }
 

@@ -15,11 +15,11 @@ library(Matrix)
 source("./R/comp_dist_matrix.R")
 source("./R/collapse_groups.R")
 
-cluster_data_path <- "./data/cluster_data.gpkg"
+cluster_data_path <- "./tmp/cluster_data.gpkg"
 cluster_data_layer <- "cluster_data"
 cluster_data_split_at = "id_batch"
-dist_matrix_dir <- "./data/dist_matrix"
-hcluster_results_path = "./data/hcluster"
+dist_matrix_dir <- "./tmp/dist_matrix"
+hcluster_results_path = "./tmp/hcluster"
 h <- units::set_units(seq(1, 20, 1), km)
 
 # ------------------------------------------------------------------------------
@@ -153,5 +153,5 @@ hcluster_concordance <- foreach(
     ungroup()
 }
 
-write_csv(hcluster_concordance, str_c("./data/hcluster_concordance.csv"))
+write_csv(hcluster_concordance, str_c("./tmp/hcluster_concordance.csv"))
 
