@@ -195,7 +195,7 @@ tbl |>
     booktabs = TRUE,
     align = c("l", rep("r", ncol(tbl) - 1)),
     escape = FALSE,
-    caption = "Summary of similarity metrics and match statistics based on the assigned primary materials and the reference dataset by \\citet{werner_global-scale_2020}.\\label{tab:match-summary-transposed}"
+    caption = "Summary of similarity metrics and match statistics based on the assigned primary commodities and the reference dataset by \\citet{werner_global-scale_2020}.\\label{tab:match-summary-transposed}"
   ) |>
   add_header_above(c(
     " " = 1,

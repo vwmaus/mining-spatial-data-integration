@@ -95,7 +95,7 @@ summary_tbl |>
         area_cluster = sprintf("%s (%.1f%%)", comma(area_cluster, accuracy = 0.1), 100 * area_cluster / sum(area_cluster))
     ) |>
     select(
-        `Material Assigned` = group,
+        `Commodity Assigned` = group,
         `Total Area (km²)` = area_cluster,
         `Clusters` = n_clusters,
         `Polygons` = n_polygons,
@@ -107,7 +107,7 @@ summary_tbl |>
     ) |>
     kable(
         digits = 1, format = "latex", booktabs = TRUE, linesep = "", align = c("l", rep("r", 8)),
-        caption = "Summary of cluster-level features by material assignment. \\label{tab:cluster-summary}"
+        caption = "Summary of cluster-level features by commodity assignment. \\label{tab:cluster-summary}"
     ) |>
     add_header_above(c(
         " " = 1,
@@ -152,7 +152,7 @@ cluster_features |>
                                                                                           sprintf("%.1f\\%%", pct_area)))
   ) |>
   select(
-    `Material Assigned` = is_assigned,
+    `Commodity Assigned` = is_assigned,
     `Data Source` = data_source,
     `Total Area (km²)`,
     `Number of Polygons` = Polygons,
@@ -164,7 +164,7 @@ cluster_features |>
     linesep = "",
     align = c("l", "l", "r", "r", "r"),
     escape = FALSE,  # allow LaTeX citations to render
-    caption = "Polygon counts and areas by material assignment and data source.\\label{tab:polygon-source-summary}"
+    caption = "Polygon counts and areas by commodity assignment and data source.\\label{tab:polygon-source-summary}"
   ) |>
   kable_styling(
     latex_options = c("striped", "scale_down", "hold_position"),
@@ -373,10 +373,11 @@ print(plot_treemap)
 dev.off()
 
 material_expanded |>
+  filter(str_starts(id, "A")) |>
   mutate(primary_materials_list = primary_material, area_mine = area_km2) |>
   mutate(n_primary_materials = n_materials, .after = "primary_materials_list") |>
   select(-primary_material, -area_km2, -n_materials, -data_source) |>
-  rename(primary_material = primary_materials_list, area_mine_km2 = area_mine) |>
+  rename(id_polygon = id, primary_commodity = primary_materials_list, n_primary_commodities = n_primary_materials, commodities_list = materials_list, area_mine_km2 = area_mine) |>
   write_csv(file.path(output_dir, "tbl-s01_mine_area_accounting.csv"))
 
 data_country |> 

@@ -192,8 +192,8 @@ gp <- pareto_optimal_point_global |>
   scale_y_continuous(labels = percent_format(accuracy = 1)) +
   scale_x_continuous(labels = percent_format(accuracy = 1)) +
   labs(
-    y = "Area with unknown material",
-    x = "Area assigned to multiple primary materials"
+    y = "Area unassigned",
+    x = "Area assigned to multiple primary commodities"
   ) +
   theme(
     legend.position = "inside",
@@ -333,7 +333,7 @@ gp <- final_cluster_concordance |>
   filter(n_materials > 0) |>
   ggplot(aes(x = n_materials, fill = list)) +
   geom_histogram(position = "identity", alpha = 0.5, binwidth = 1) +
-  labs(x = "Number of assigned materials",
+  labs(x = "Number of assigned commodities",
        y = "Count of clusters") +
   scale_fill_viridis_d(name = "List of materials", option = "D", begin = 0, end = .7, direction = -1) +
   theme_minimal() +
