@@ -95,7 +95,7 @@ summary_tbl |>
         area_cluster = sprintf("%s (%.1f%%)", comma(area_cluster, accuracy = 0.1), 100 * area_cluster / sum(area_cluster))
     ) |>
     select(
-        `Commodity Assigned` = group,
+        `Commodity` = group,
         `Total Area (km²)` = area_cluster,
         `Clusters` = n_clusters,
         `Polygons` = n_polygons,
@@ -152,7 +152,7 @@ cluster_features |>
                                                                                           sprintf("%.1f\\%%", pct_area)))
   ) |>
   select(
-    `Commodity Assigned` = is_assigned,
+    `Commodity` = is_assigned,
     `Data Source` = data_source,
     `Total Area (km²)`,
     `Number of Polygons` = Polygons,
