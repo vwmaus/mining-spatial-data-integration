@@ -1,3 +1,4 @@
+[![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.15611393.svg)](https://doi.org/10.5281/zenodo.15611393)
 
 # Spatial Data Integration for Global Mine Land Use Analysis
 
@@ -27,6 +28,3 @@ This repository provides R scripts to integrate and analyze global mining land u
 
 This project is licensed under the GPL-3.0 License.
 
-## Citation
-
-[![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.15611393.svg)](https://doi.org/10.5281/zenodo.15611393)
