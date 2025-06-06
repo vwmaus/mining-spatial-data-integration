@@ -10,7 +10,7 @@ library(knitr)
 library(kableExtra)
 library(stringr)
 
-cluster_data_dir <- "./output/20241026-all_materials"
+cluster_data_dir <- "./output/20250606-all_materials"
 
 # Compare assigned commodities with Werner et al. (2020)
 if(!file.exists("./tmp/werner/werner.gpkg")){
@@ -96,12 +96,7 @@ if(!file.exists(check_werner_path)){
 }
 
 mine_clusters_check <- read_csv(check_werner_path) |>
-    drop_na(werner_primary_materials_list) |>
-    mutate(
-        overlapcoeff_primary = idoverlap_primary,
-        idoverlap_primary = overlapcoeff_primary > 0,
-        overlapcoeff_materials = idoverlap_materials,
-        idoverlap_materials = overlapcoeff_materials > 0)
+    drop_na(werner_primary_materials_list)
 
 # View(st_drop_geometry(mine_clusters_check) |>select(primary_materials_list, werner_primary_materials_list, jaccard_primary, dice_primary, idoverlap_primary))
     
@@ -206,7 +201,7 @@ tbl |>
     latex_options = c("striped", "scale_down", "hold_position"),
     full_width = FALSE
   )  |> 
-  writeLines(con = "./output/paper-supplementary/tbl-similarity-metrics.tex")
+  writeLines(con = str_c(cluster_data_dir, "/tbl-similarity-metrics.tex"))
 
 
 ##### Data for Visual checks 

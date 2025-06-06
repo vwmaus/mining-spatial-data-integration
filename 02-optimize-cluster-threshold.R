@@ -37,8 +37,12 @@ yellow_d <- "#f6ae2d"
 path_output <- str_c("./output/", release_version_date, "-", release_version_name)
 dir.create(path_output, recursive = TRUE, showWarnings = FALSE)
 
+id_to_remove <- tibble(id=NULL)
+if(file.exists("./data/incorrect_polygons_list.csv")) id_to_remove <- read_csv("./data/incorrect_polygons_list.csv")
+
 hcluster_concordance <- read_csv("./tmp/hcluster_concordance.csv") |>
-  left_join(st_read(dsn = "./tmp/cluster_data.gpkg", query = "SELECT id, area_mine FROM cluster_data", quiet = TRUE)) 
+  left_join(st_read(dsn = "./tmp/cluster_data.gpkg", query = "SELECT id, area_mine FROM cluster_data", quiet = TRUE)) |>
+  filter(!id %in% id_to_remove$id) # Polygon with error 
 
 if(!is.null(path_harmonisation_table)){
   source("./R/harmonize_materials.R")
@@ -346,6 +350,7 @@ ggsave(filename = str_c(path_output, "/fig-distribution-number-assigned-material
        width = 140, height = 140, units = "mm", scale = 1)
 
 cluster_features <- st_read("./tmp/cluster_data.gpkg") |>
+  filter(!id %in% id_to_remove$id) |>
   select(id, data_source, id_data_source, data_source, area_mine) |>
   left_join(select(final_cluster_concordance, -area_mine))  |>
   select(id, id_cluster, id_data_source, data_source, area_mine, primary_materials_list, materials_list, geom)

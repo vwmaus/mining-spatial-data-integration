@@ -13,7 +13,7 @@ library(kableExtra)
 library(scales)
 library(treemapify)
 
-data_version <- "20250119-all_materials"
+data_version <- "20250606-all_materials"
 
 # Country distribution 
 sf_use_s2(FALSE)
@@ -116,7 +116,7 @@ summary_tbl |>
         "Average" = 4
     )) |>
     kable_styling(latex_options = c("striped", "scale_down", "HOLD_position"), font_size = 12, position = "center") |>
-    writeLines(con = "./output/paper-supplementary/tbl-cluster-summary.tex")
+    writeLines(con = str_c(cluster_data_dir, "/tbl-cluster-summary.tex"))
 
 
 
@@ -170,7 +170,7 @@ cluster_features |>
     latex_options = c("striped", "scale_down", "hold_position"),
     position = "center"
   ) |>
-  writeLines(con = "./output/paper-supplementary/tbl-polygon-source-summary.tex")
+  writeLines(con = str_c(cluster_data_dir, "/tbl-polygon-source-summary.tex"))
 
 
 ##### Summary figures 
@@ -358,7 +358,7 @@ plot_treemap <- ggplot(material_treemap_data, aes(area = area_km2, fill = materi
 # Show and Save Plots
 # -------------------------------
 
-output_dir <- "output/paper-supplementary"
+output_dir <- cluster_data_dir
 
 png(filename = file.path(output_dir, "plot_country_overview.png"), width = 1800, height = 1800, res = 300)
 print(plot_country)
