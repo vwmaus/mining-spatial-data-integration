@@ -1,5 +1,5 @@
 
-# Mining Spatial Data Integration
+# Spatial Data Integration for Global Mine Land Use Analysis
 
 This repository provides R scripts to integrate and analyze global mining land use datasets, linking spatial features to commodities and other mine operations information. It supports the preprocessing, clustering, and visualization of mining areas for environmental and resource management studies.
 
@@ -26,3 +26,7 @@ This repository provides R scripts to integrate and analyze global mining land u
 ## License
 
 This project is licensed under the GPL-3.0 License.
+
+## Citation
+
+[![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.15611393.svg)](https://doi.org/10.5281/zenodo.15611393)
