@@ -1,3 +1,25 @@
+# -----------------------------------------------------------------
+# SCRIPT: 04-cluster-extenssions-and-overview.R
+# -----------------------------------------------------------------
+#
+# This script is the final post-processing and figure-generation step,
+# creating many of the key tables and plots for the final manuscript.
+#
+# Workflow:
+# 1.  Reads the final `cluster_features.gpkg` from the data release.
+# 2.  Performs geo-enrichment by spatially joining the clusters with
+#     country boundaries and ecoregion data.
+# 3.  Generates a LaTeX summary table (`tbl-cluster-summary.tex`) that
+#     aggregates statistics by "Assigned" vs. "Unassigned" clusters.
+# 4.  Generates a LaTeX summary table (`tbl-polygon-source-summary.tex`) that
+#     breaks down the results by the original data sources (Maus, Tang, etc.).
+# 5.  Generates key manuscript figures, including:
+#     - Bar chart of mined area by country and material.
+#     - Bar chart of mined area by biome and material.
+#     - Treemap of total mined area by primary material.
+# 6.  Exports a final supplementary data file (`s02-mine_area_accounting.csv`)
+#     with detailed area accounting.
+
 library(sf)
 library(dplyr)
 library(stringr)

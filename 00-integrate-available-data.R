@@ -1,3 +1,24 @@
+# -----------------------------------------------------------------
+# SCRIPT: 00-integrate-available-data.R
+# -----------------------------------------------------------------
+#
+# This script is the primary data preparation and integration step for the entire project.
+# Its main function is to acquire, process, and unify all disparate source datasets (both
+# polygon-based land use and point-based properties) into a single, analysis-ready file.
+#
+# Workflow:
+# 1.  Downloads and pre-processes multiple external datasets (Maus, Tang, OSM, Jasansky, S&P, GEM).
+# 2.  Integrates the various mining land-use polygons into a single, non-overlapping
+#     layer (`maus_tang_osm.gpkg`) using S2 geometry operations.
+# 3.  Integrates the various mining property (point) datasets into a single layer
+#     (`mining_properties.gpkg`).
+# 4.  Combines the integrated polygon and point layers into a master file (`cluster_data.gpkg`).
+# 5.  Performs the critical "pre-grouping" step: it builds a spatial graph based on a
+#     proximity threshold (e.g., 20 km) to identify all connected components.
+# 6.  Assigns a unique `id_group` to each component and an `id_batch` for efficient
+#     parallel processing in the next script.
+
+
 library(sf)
 library(s2)
 library(dplyr)

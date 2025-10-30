@@ -1,3 +1,26 @@
+# -----------------------------------------------------------------
+# SCRIPT: 01-cluster-spatial-features.R
+# -----------------------------------------------------------------
+#
+# This script is the core computational engine of the clustering workflow. It takes the
+# pre-grouped data from script 00 and performs parallel computation to
+# pre-calculate all possible cluster combinations up to a maximum distance.
+#
+# Workflow:
+# 1.  Reads the `cluster_data.gpkg` (containing `id_group` and `id_batch`).
+# 2.  In parallel (by `id_batch`), it computes the pairwise distance matrix for all
+#     features *within* each `id_group`.
+# 3.  In parallel (by `id_group`), it performs a "single" linkage hierarchical
+#     clustering (`hclust`) on each group's distance matrix.
+# 4.  For each group, it "cuts" the resulting cluster tree at every specified
+#     distance threshold $h$ (e.g., 1 km, 2 km, ... 20 km).
+# 5.  For each $h$, it assigns commodity lists (primary and all) to every resulting
+#     cluster by collapsing the commodities of its member features.
+# 6.  The final output is a single, comprehensive lookup table (`hcluster_concordance.csv`)
+#     that maps every feature to its corresponding cluster ID and assigned commodity list
+#     for *every possible* distance threshold.
+
+
 library(stringr)
 library(dplyr)
 library(sf)
