@@ -13,7 +13,7 @@ library(kableExtra)
 library(scales)
 library(treemapify)
 
-data_version <- "20250606-all_materials"
+data_version <- "20251030-all_materials"
 
 # Country distribution 
 sf_use_s2(FALSE)
@@ -116,9 +116,7 @@ summary_tbl |>
         "Average" = 4
     )) |>
     kable_styling(latex_options = c("striped", "scale_down", "HOLD_position"), font_size = 12, position = "center") |>
-    writeLines(con = str_c(cluster_data_dir, "/tbl-cluster-summary.tex"))
-
-
+    writeLines(con = str_c("./output/", data_version, "/tbl-cluster-summary.tex"))
 
 
 
@@ -170,7 +168,7 @@ cluster_features |>
     latex_options = c("striped", "scale_down", "hold_position"),
     position = "center"
   ) |>
-  writeLines(con = str_c(cluster_data_dir, "/tbl-polygon-source-summary.tex"))
+  writeLines(con = str_c("./output/", data_version, "/tbl-polygon-source-summary.tex"))
 
 
 ##### Summary figures 
@@ -358,7 +356,7 @@ plot_treemap <- ggplot(material_treemap_data, aes(area = area_km2, fill = materi
 # Show and Save Plots
 # -------------------------------
 
-output_dir <- cluster_data_dir
+output_dir <- str_c("./output/", data_version)
 
 png(filename = file.path(output_dir, "plot_country_overview.png"), width = 1800, height = 1800, res = 300)
 print(plot_country)
@@ -386,9 +384,12 @@ data_country |>
   mutate(p.area_mine = area_mine_km2 / sum(area_mine_km2) * 100) |>
   arrange(desc(p.area_mine))
 
+cat("\nTotal area:", sum(data_country$area_km2), "\n")
+
 data_biome |> 
   group_by(biome_name) |>
   reframe(area_mine_km2 = sum(area_km2)) |>
   mutate(p.area_mine = area_mine_km2 / sum(area_mine_km2) * 100) |>
   arrange(desc(p.area_mine))
 
+cat("\nTotal area:", sum(data_biome$area_km2), "\n")

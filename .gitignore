@@ -55,3 +55,5 @@ output/
 .vscode/
 zzz.R
 *.Rout
+renv/
+Rplots.pdf

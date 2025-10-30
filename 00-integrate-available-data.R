@@ -6,6 +6,9 @@ library(stringr)
 library(readxl)
 library(igraph)
 library(units)
+library(ggplot2)
+library(viridis)
+library(scales)
 
 dir.create("./data", showWarnings = F)
 
