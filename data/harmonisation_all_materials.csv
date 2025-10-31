@@ -1,0 +1,204 @@
+material,material_harmonized,metal_classes,energy_transition_materials,critical_materials
+Aggregates,Aggregates,Non-metal,False,False
+Alumina,Aluminium,Non-metal,True,True
+Alumina hydrate,Aluminium,Non-metal,True,True
+Aluminium,Aluminium,Metal,True,True
+Aluminium hydroxide,Aluminium,Metal,True,True
+Aluminum,Aluminium,Metal,True,True
+Anthracite,Coal,Non-metal,False,False
+Antimony,Antimony,Metal,True,True
+Arsenic,Arsenic,Metalloid,False,True
+Asbestos,Asbestos,Non-metal,False,True
+Barite,Barite,Non-metal,False,False
+Bauxite,Aluminium,Non-metal,True,True
+Beryl,Beryl,Non-metal,False,False
+Beryllium,Beryllium,Metal,True,True
+Bismuth,Bismuth,Metal,False,True
+Bituminous coal,Coal,Non-metal,False,False
+Bituminous coking coal,Coal,Non-metal,False,False
+Bituminous thermal coal,Coal,Non-metal,False,False
+Borates,Borates,Non-metal,True,True
+Boron,Boron,Metalloid,True,True
+Brown coal,Coal,Non-metal,False,False
+Cadmium,Cadmium,Metal,False,True
+Caesium,Caesium,Metal,False,True
+Calcine,Calcine,Non-metal,False,False
+Calcium Carbonate,Calcium Carbonate,Non-metal,False,False
+Cerium,Rare Earth Element,Rare Earth,True,True
+Chemical grade Alumina,Aluminium,Non-metal,True,True
+Chrome,Chromium,Metal,True,True
+Chromite,Chromite,Non-metal,True,True
+Chromium,Chromium,Metal,True,True
+Coal,Coal,Non-metal,False,False
+Cobalt,Cobalt,Metal,True,True
+Cobalt hydroxide,Cobalt,Metal,True,True
+Coking coal,Coal,Non-metal,False,False
+Coking coal concentrate,Coal,Non-metal,False,False
+Coper Anodes,Copper,Metal,True,True
+Copper,Copper,Metal,True,True
+Copper Cathode,Copper,Metal,True,True
+Copper anode,Copper,Metal,True,True
+Copper anodes,Copper,Metal,True,True
+Copper cathode,Copper,Metal,True,True
+Copper cathodes,Copper,Metal,True,True
+Diamonds,Diamonds,Non-metal,False,False
+Direct Reduction Iron Pellets,,Metal,False,False
+Direct shipping iron ore,Iron,Metal,False,False
+Dolomite,Dolomite,Non-metal,False,False
+Dysprosium,Rare Earth Element,Rare Earth,True,True
+Emerald,Emerald,Non-metal,False,False
+Erbium,Rare Earth Element,Rare Earth,True,True
+Europium,Rare Earth Element,Rare Earth,True,True
+Ferrite Strontium Powder,Strontium,Metal,False,True
+Ferrochrome,Ferrochrome,Metal,False,True
+Ferromanganese,Ferromanganese,Metal,False,True
+Ferronickel,Ferronickel,Metal,True,True
+Ferroniobium,Ferroniobium,Metal,True,True
+Ferrotungsten,Ferrotungsten,Metal,True,True
+Ferrovanadium,Ferrovanadium,Metal,True,True
+Fluorspar,Fluorspar,Non-metal,True,True
+Frac Sand,Frac Sand,Non-metal,True,False
+Gadolinium,Rare Earth Element,Rare Earth,True,True
+Gallium,Gallium,Metal,True,True
+Garnet,Garnet,Non-metal,False,False
+Germanium,Germanium,Metalloid,True,True
+Gold,Gold,Metal,False,True
+Graphite,Graphite,Non-metal,True,True
+Gypsum,Gypsum,Non-metal,False,False
+Hafnium,Titanium,Rare Earth,True,True
+Hard coal,Coal,Non-metal,False,False
+Hard coking coal,Coal,Non-metal,False,False
+Heavy Mineral Sands,Heavy Mineral Sands,Non-metal,False,False
+Heavy Rare Earths and Yttrium,Rare Earth Element,Rare Earth,True,True
+Hematite,Hematite,Metal,False,False
+Holmium,Rare Earth Element,Rare Earth,True,True
+Hot briquetted Iron,Iron,Metal,False,False
+Ilmenite,Titanium,Non-metal,True,True
+Indium,Indium,Metal,True,True
+Iridium,Platinum Group Element,Metal,True,True
+Iron,Iron,Metal,False,False
+Iron Ore,Iron,Metal,False,False
+Iron Sand,Iron,Metal,False,False
+Iron concentrate,Iron,Metal,False,False
+Iron ore,Iron,Metal,False,False
+Iron ore concentrate,Iron,Metal,False,False
+Iron ore fines,Iron,Metal,False,False
+Iron ore lumps,Iron,Metal,False,False
+Iron ore pellets,Iron,Metal,False,False
+Iron pellets,Iron,Metal,False,False
+Jade,Jade,Non-metal,False,False
+Kaolin,Kaolin,Non-metal,False,False
+Lanthanides,Rare Earth Element,Rare Earth,True,True
+Lanthanum,Rare Earth Element,Rare Earth,True,True
+Lead,Lead,Metal,False,True
+Leucoxene,Leucoxene,Non-metal,False,False
+Lignite,Coal,Non-metal,False,False
+Limestone,Limestone,Non-metal,False,False
+Lithium,Lithium,Metal,True,True
+Long flame coal,Coal,Non-metal,False,False
+Lutetium,Rare Earth Element,Rare Earth,True,True
+Magnesium,Magnesium,Metal,True,True
+Magnetite,Magnetite,Metal,False,False
+Manganese,Manganese,Metal,True,True
+Marble,Marble,Non-metal,False,False
+Mercury,Mercury,Metal,False,True
+Metallurgical bituminous coal,Coal,Non-metal,False,False
+Metallurgical coa,Coal,Non-metal,False,False
+Metallurgical coal,Coal,Non-metal,False,False
+Metallurgical coke,Coke,Non-metal,False,False
+Molybdenum,Molybdenum,Metal,True,True
+Monazite,Rare Earth Element,Rare Earth,True,True
+Neodymium,Rare Earth Element,Rare Earth,True,True
+Nepheline ore,Nepheline,Non-metal,False,False
+Nickel,Nickel,Metal,True,True
+Niobium,Niobium,Metal,True,True
+Osmium,Platinum Group Element,Metal,True,True
+PCI,Coal,Non-metal,False,False
+PCI Metallurgical coal,Coal,Non-metal,False,False
+PGM,Platinum Group Element,Metal,True,True
+Palladium,Platinum Group Element,Metal,True,True
+Phosphate,Phosphate,Non-metal,True,True
+Phosphates,Phosphate,Non-metal,True,True
+Platinum,Platinum Group Element,Metal,True,True
+Platinum Group Metals,Platinum Group Element,Metal,True,True
+Potash,Potash,Non-metal,True,True
+Potassium Chloride,Potassium,Non-metal,True,True
+Potassium Oxide,Potassium,Non-metal,True,True
+Potassium Sulfate,Potassium,Non-metal,True,True
+Praseodymium,Rare Earth Element,Rare Earth,True,True
+Promethium,Rare Earth Element,Rare Earth,True,True
+Pulverized Coal Injection,Coal,Non-metal,False,False
+Pyrite,Pyrite,Non-metal,False,True
+Rare Earth Element,Rare Earth Element,Rare Earth,True,True
+Refined Copper,Copper,Metal,True,True
+Refined Gold,Gold,Metal,False,True
+Refined Lead,Lead,Metal,False,True
+Refined Rutile,Titanium,Non-metal,True,True
+Refined Silver,Silver,Metal,True,True
+Refined Zinc,Zinc,Metal,True,True
+Refined Zircon,Zircon,Non-metal,False,False
+Rhenium,Rhenium,Metal,True,True
+Rhodium,Rhodium,Metal,True,True
+Rubidium,Rubidium,Metal,False,True
+Ruby,Ruby,Non-metal,False,False
+Ruthenium,Platinum Group Element,Metal,True,True
+Rutile,Titanium,Non-metal,True,True
+Samarium,Rare Earth Element,Rare Earth,True,True
+Sapphire,Sapphire,Non-metal,False,False
+Scandium,Rare Earth Element,Rare Earth,True,True
+Selenium,Selenium,Metalloid,True,True
+Semi-anthracite pulverised coal injection (PCI) coal,Coal,Non-metal,False,False
+Semi-hard coking coal,Coal,Non-metal,False,False
+Semi-soft coking coal,Coal,Non-metal,False,False
+Silica,Silica,Non-metal,True,False
+Silver,Silver,Metal,True,True
+Sintering iron ore,Iron,Metal,False,False
+Sodium Bicarbonate,Sodium Bicarbonate,Non-metal,False,False
+Sodium tripolyphosphate,Sodium Tripolyphosphate,Non-metal,True,True
+Soft coking coal,Coal,Non-metal,False,False
+Spodumene,Spodumene,Non-metal,True,True
+Steam coal,Coal,Non-metal,False,False
+Steel,,Metal,False,False
+Strontium,Strontium,Metal,False,True
+Sub-bituminous coal,Coal,Non-metal,False,False
+Subbituminous coal,Coal,Non-metal,False,False
+Sulfur,Sulfur,Non-metal,True,True
+Sulphuric Acid,Sulphuric Acid,Non-metal,True,True
+Synthetic Rutile,Rutile,Non-metal,True,True
+Tantalum,Tantalum,Metal,True,True
+Tellurium,Tellurium,Metalloid,True,True
+Terbium,Rare Earth Element,Rare Earth,True,True
+Thermal bituminous coal,Coal,Non-metal,False,False
+Thermal coal,Coal,Non-metal,False,False
+Thorium,Rare Earth Element,Rare Earth,True,True
+Thulium,Rare Earth Element,Rare Earth,True,True
+Tin,Tin,Metal,False,True
+Titanium,Titanium,Metal,True,True
+Topaz,Topaz,Non-metal,False,False
+Tungsten,Tungsten,Metal,True,True
+U3O8,Uranium,Metal,False,True
+Uranium,Uranium,Metal,False,True
+Uranium oxide,Uranium,Metal,False,True
+Vanadium,Vanadium,Metal,True,True
+Vermiculite,Vermiculite,Non-metal,False,False
+Ytterbium,Rare Earth Element,Rare Earth,True,True
+Yttrium,Rare Earth Element,Rare Earth,True,True
+Zicron,Zircon,Non-metal,False,False
+Zinc,Zinc,Metal,True,True
+Zinc ingots,Zinc,Metal,True,True
+Zinc-Lead,"Zinc,Lead",Metal,False,True
+Zircon,Zircon,Non-metal,False,False
+ammonium sulfate,Ammonium Sulfate,Non-metal,False,False
+coke,Coal,Non-metal,False,False
+gold,Gold,Metal,False,True
+lead,Lead,Metal,False,True
+light crude oil,Crude Oil,Non-metal,False,False
+merchant steel bar,,Metal,False,False
+metallurgical coal,Coal,Non-metal,False,False
+rebars,,Metal,False,False
+semi-hard coking coal,Coal,Non-metal,False,False
+semi-soft coking coal,Coal,Non-metal,False,False
+steel angles,,Metal,False,False
+steel billets,,Metal,False,False
+tar,Tar,Non-metal,False,False
+wire rods,,Metal,False,False
