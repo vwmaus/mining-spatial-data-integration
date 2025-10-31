@@ -50,7 +50,6 @@ rsconnect/
 
 # Other files
 tmp/
-data/
 output/
 .vscode/
 zzz.R
