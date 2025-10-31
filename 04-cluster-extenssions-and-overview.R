@@ -34,6 +34,9 @@ library(knitr)
 library(kableExtra)
 library(scales)
 library(treemapify)
+library(patchwork) 
+
+source("./R/s2_union_split_agg.R")
 
 data_version <- "20251030-all_materials"
 
@@ -210,7 +213,7 @@ material_expanded <- cluster_features |>
   mutate(n_materials = n()) |>
   ungroup() |>
   mutate(
-    area_km2 = (area_mine / n_materials) * 1e-6,
+    area_km2 = (area_mine / n_materials) * 1e-6, # allocates area to materials by dividing with the number of associated materials
     primary_material = ifelse(is.na(primary_materials_list), "Unknown", primary_materials_list)
   )
 
@@ -415,3 +418,137 @@ data_biome |>
   arrange(desc(p.area_mine))
 
 cat("\nTotal area:", sum(data_biome$area_km2), "\n")
+
+
+
+
+
+
+
+
+
+
+
+
+
+# --- 1. Load Original Data ---
+# (Using your existing data loading logic)
+plot_map_data <- st_read(str_c("./output/", data_version, "/cluster_features.gpkg")) |>
+  filter(str_starts(id, "A")) |>
+  select(id, geom) |>
+  st_transform(crs = "+proj=robin") |>
+  mutate(geom = st_centroid(geom)) |>
+  left_join(select(material_expanded, primary_material, id, area_km2)) |>
+  mutate(
+    material_group = case_when(
+      is.na(primary_material) ~ "Unknown",
+      primary_material %in% top_materials ~ primary_material,
+      TRUE ~ "Other"
+    ),
+    material_group = factor(material_group, levels = material_levels)
+  )
+
+# --- 2. Create Data for Bar Plot (Total Area) ---
+# (This is the same as before, using original polygons)
+cat("Calculating total area for bar plot from original polygons...\n")
+area_summary <- plot_map_data |>
+  st_drop_geometry() |>
+  group_by(material_group) |>
+  summarise(total_area_km2 = sum(area_km2)) |>
+  ungroup() |>
+  arrange(desc(total_area_km2)) |>
+  mutate(p.total_area_km2 = total_area_km2 / sum(total_area_km2))
+
+# --- 3. Create Data for Finer Gridded Map ---
+cat("Creating a finer 0.5-degree grid... This may take longer.\n")
+
+# **THE CHANGE IS HERE:** Using 0.5-degree cells instead of 1-degree
+global_grid <- st_make_grid(plot_map_data, cellsize = c(50000, 50000)) |>
+  st_as_sf() |>
+  mutate(grid_id = 1:n())
+
+# (The rest of the summary logic is the same)
+grid_join <- st_join(global_grid, plot_map_data) |>
+  filter(!is.na(material_group))
+
+grid_summary <- grid_join |>
+  st_drop_geometry() |>
+  group_by(grid_id) |>
+  count(material_group, wt = area_km2, sort = TRUE) |>
+  slice(1) |>
+  ungroup() |>
+  rename(dominant_material = material_group)
+
+grid_to_plot <- global_grid |>
+  inner_join(grid_summary, by = "grid_id") 
+
+# Load and project the world map background
+world_map <- ne_countries(scale = "medium", returnclass = "sf") |>
+  st_union() |>
+  st_make_valid()
+
+# --- 4. Create the Individual Plots ---
+cat("Generating individual plots...\n")
+
+# PLOT A: The Map (Finer Grid)
+map_plot <- ggplot() +
+  geom_sf(data = world_map, fill = "#f0f0f0", color = "#cccccc", size = 0.1) +
+  geom_sf(data = grid_to_plot, aes(fill = dominant_material), color = NA) +
+  scale_fill_manual(
+    values = material_palette, 
+    limits = names(material_palette), # Ensures all materials in legend
+    name = "Dominant Material"
+  ) +
+  theme_void() +
+  theme(legend.position = "none")
+
+# PLOT B: The Bar Plot (Based on original area)
+bar_plot <- ggplot(area_summary, 
+                   aes(x = reorder(material_group, total_area_km2), 
+                       y = total_area_km2, 
+                       fill = material_group)) +
+  geom_col() +
+  coord_flip() + 
+  scale_fill_manual(values = material_palette, limits = names(material_palette)) +
+  labs(
+    x = "", 
+    y = "Total Area (km²)"
+  ) +
+  theme_minimal() +
+  theme(legend.position = "none")
+
+# --- 5. Combine Plots with Patchwork & Save ---
+cat("Combining plots and saving...\n")
+
+
+# Save the combined plot with a new name
+png(filename = file.path(output_dir, "plot_global_top_commodity_bar.png"), width = 1800, height = 600, res = 300)
+print(bar_plot)
+dev.off()
+
+png(filename = file.path(output_dir, "plot_global_top_commodity_finer_grid.png"), width = 1200, height = 600, res = 300)
+print(map_plot)
+dev.off()
+
+
+# open data release 
+mine_polygons <- st_read(str_c("./output/", data_version, "/mine_polygons.gpkg"))
+mine_points <- st_read(str_c("./output/", data_version, "/mine_points.gpkg")) |>
+  st_drop_geometry() |>
+  select(id_cluster, point_source = data_source) |>
+  as_tibble() |>
+  group_by(id_cluster) |>
+  summarise(point_source = str_c(unique(point_source), collapse = ","))
+
+subset_mine_polygons <- left_join(mine_polygons, mine_points) |>
+  filter(point_source != "S&P" | is.na(point_source)) |>
+  select(-point_source, -data_source)
+
+st_write(subset_mine_polygons, file.path(output_dir, "subset_mine_polygons.gpkg"), delete_dsn = TRUE)
+
+sum(subset_mine_polygons$area_mine) * 1e-6 # from m2 to km2
+
+group_by(subset_mine_polygons, is.na(primary_materials_list)) |>
+  st_drop_geometry() |>
+  summarise(area_mine = sum(area_mine)*1e-6) |>
+  mutate(perc = area_mine / sum(area_mine))

@@ -55,7 +55,7 @@ path_harmonisation_table <- "./data/harmonisation_all_materials.csv"
 #
 # set version of the data output (for naming the output folder)
 release_version_name <- "all_materials"
-release_version_date <- format(Sys.Date(), '%Y%m%d')
+release_version_date <- "20251030"#format(Sys.Date(), '%Y%m%d')
 #
 ################################################################################
 
@@ -317,8 +317,8 @@ gp <- ggplot(all_sensitivity_results, aes(x = perc_area_multi_count, y = perc_ar
   #geom_text(aes(label = str_c(max_local_thr_km, " km")), vjust = -1, hjust = 0.5, size = 3, check_overlap = TRUE) +
   
   # Highlight the Global Optimum
-  geom_point(data = global_optimum_point_for_plot, color = green_d, size = 5, shape = 18) +
-  geom_text(data = global_optimum_point_for_plot, label = "Global Optimum", color = green_d, vjust = 1.5, hjust = -0.08) +
+  geom_point(data = global_optimum_point_for_plot, color = "grey", size = 5, shape = 18) +
+  geom_text(data = global_optimum_point_for_plot, label = "Global Optimum", color = "grey", vjust = 1.5, hjust = -0.08) +
   
   # --- MODIFIED: Highlight the chosen (auto or user-defined) Local choice ---
   geom_point(data = optimal_local_run, color = red_d, size = 5, shape = 18, fill = red_d) +
@@ -327,16 +327,16 @@ gp <- ggplot(all_sensitivity_results, aes(x = perc_area_multi_count, y = perc_ar
     # --- NEW: Add dashed lines and labels for Global Optimum ---
   geom_segment(data = global_optimum_point_for_plot, 
                aes(x = perc_area_multi_count, y = perc_area_unknown, xend = perc_area_multi_count, yend = 0), 
-               linetype = "dashed", color = green_d) +
+               linetype = "dashed", color = "grey") +
   geom_segment(data = global_optimum_point_for_plot, 
                aes(x = perc_area_multi_count, y = perc_area_unknown, xend = 0, yend = perc_area_unknown), 
-               linetype = "dashed", color = green_d) +
+               linetype = "dashed", color = "grey") +
   geom_text(data = global_optimum_point_for_plot, 
             aes(x = perc_area_multi_count, y = 0, label = scales::percent(perc_area_multi_count, accuracy = 1)), 
-            color = green_d, vjust = 1.5, size = 5) +
+            color = "grey", vjust = 1.5, size = 5) +
   geom_text(data = global_optimum_point_for_plot, 
             aes(x = 0, y = perc_area_unknown, label = scales::percent(perc_area_unknown, accuracy = 1)), 
-            color = green_d, hjust = 1.2, size = 5) +
+            color = "grey", hjust = 1.2, size = 5) +
             
   # --- NEW: Add dashed lines and labels for Local Optimum ---
   geom_segment(data = optimal_local_run, 
