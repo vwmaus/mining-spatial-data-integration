@@ -1,4 +1,4 @@
-[![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.15611393.svg)](https://doi.org/10.5281/zenodo.15611393)
+[![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.15611392.svg)](https://doi.org/10.5281/zenodo.15611392)
 
 # Mining Spatial Data Integration and Optimization
 
