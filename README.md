@@ -90,6 +90,11 @@ To run the demo (which reproduces the results from the manuscript), simply execu
 * **Expected Output**: Additional figures and tables in `./output/.../`
 * **Expected Run Time**: 1-2 minutes
 
+* **Run**: `Rscript 05-cluster-progression-illustration.R`
+* **What it does**: Generates an illustration of the clustering progress with the increasing threshold distance.
+* **Expected Output**: Additional figures in `./output/.../`
+* **Expected Run Time**: 1-2 minutes
+
 ---
 
 ## 5. Instructions for Use (On Your Data)
