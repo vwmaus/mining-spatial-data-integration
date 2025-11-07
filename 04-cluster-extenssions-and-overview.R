@@ -560,7 +560,9 @@ material_expanded |>
   mutate(primary_materials_list = primary_material, area_mine = area_km2) |>
   mutate(n_primary_materials = n_materials, .after = "primary_materials_list") |>
   select(-primary_material, -area_km2, -n_materials, -data_source) |>
-  rename(id_polygon = id, primary_commodity = primary_materials_list, n_primary_commodities = n_primary_materials, commodities_list = materials_list, area_mine_km2 = area_mine) |>
+  rename(id_polygon = id, primary_commodity = primary_materials_list, n_primary_commodities = n_primary_materials, area_mine_km2 = area_mine) |>
+  group_by(country_name, biome_name, primary_commodity) |>
+  reframe(area_mine_km2 = sum(area_mine_km2)) |>
   write_csv(file.path(output_dir, "s02-mine_area_accounting.csv"))
 
 # --- Export S&P-filtered Polygons ---
