@@ -47,7 +47,7 @@ This project uses `renv` to ensure full reproducibility.
 
 ## 3. Data Requirements
 
-This workflow automatically downloads most of the required public datasets (Maus, Tang, Jasansky, GEM). However, **two datasets must be provided manually** and placed in the `./tmp/` folder due to their licensing or distribution:
+This workflow automatically downloads most of the required public datasets (Maus, Tang, Dethier, Jasansky, GEM). However, **two datasets must be provided manually** and placed in the `./tmp/` folder due to their licensing or distribution:
 
 * `./tmp/osm/osm_quarry_check_20211125.gpkg`: The OpenStreetMap mining polygon data.
 * `./tmp/snl2020.gpkg`: The S&P (SNL) mining properties point data.
@@ -63,7 +63,7 @@ To run the demo (which reproduces the results from the manuscript), simply execu
 
 ### Step 1: Integrate Data & Pre-Group Features
 * **Run**: `Rscript 00-integrate-available-data.R`
-* **What it does**: Integrates all source data (Maus, Tang, OSM, Jasansky, S&P, GEM) and builds a spatial graph to identify all connected components (`id_group`) and create processing batches.
+* **What it does**: Integrates all source data (Maus, Tang, OSM, Dethier, Jasansky, S&P, GEM) and builds a spatial graph to identify all connected components (`id_group`) and create processing batches.
 * **Expected Output**: `./tmp/cluster_data.gpkg`
 * **Expected Run Time**: 10 minutes (depending on graph processing).
 
@@ -121,7 +121,7 @@ This workflow is designed to be run on custom data, provided you format your inp
 
 ## 6. Citation
 
-Victor Maus. A Data-Driven Approach to Mapping Global Commodity-Specific Mining Land-Use (June 17, 2025). Available at SSRN: [https://ssrn.com/abstract=5408302](https://ssrn.com/abstract=5408302) or [http://dx.doi.org/10.2139/ssrn.5408302](http://dx.doi.org/10.2139/ssrn.5408302).
+Maus, V., et al. (2025). A data-driven approach to mapping global commodity-specific mining land-use. Journal of Cleaner Production [10.1016/j.jclepro.2025.147437](https://doi.org/10.1016/j.jclepro.2025.147437)
 
 ## 7. License
 

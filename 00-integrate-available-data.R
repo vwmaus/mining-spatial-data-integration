@@ -7,11 +7,12 @@
 # polygon-based land use and point-based properties) into a single, analysis-ready file.
 #
 # Workflow:
-# 1.  Downloads and pre-processes multiple external datasets (Maus, Tang, OSM, Jasansky, S&P, GEM).
+# 1.  Downloads and pre-processes multiple external datasets (Maus, Tang, OSM, Dethier, Jasansky, S&P, GEM).
 # 2.  Integrates the various mining land-use polygons into a single, non-overlapping
-#     layer (`maus_tang_osm.gpkg`) using S2 geometry operations.
+#     layer (`mining_land_use.gpkg`) using S2 geometry operations.
 # 3.  Integrates the various mining property (point) datasets into a single layer
-#     (`mining_properties.gpkg`).
+#     (`mining_properties.gpkg`). For Dethier (2023), polygon centroids are used as
+#     property points, with primary commodity joined from the dataset's metadata.
 # 4.  Combines the integrated polygon and point layers into a master file (`cluster_data.gpkg`).
 # 5.  Performs the critical "pre-grouping" step: it builds a spatial graph based on a
 #     proximity threshold (e.g., 20 km) to identify all connected components.
@@ -103,7 +104,7 @@ if(!file.exists("./tmp/maus/maus.gpkg")){
         
         # Check for optional additional file
         if (file.exists("./tmp/maus/maus_new_polygons.gpkg")) {
-            maus_new <- st_read("./tmp/maus/maus_new_polygons.gpkg")
+            maus_new <- st_read("./tmp/maus/maus_new_polygons.gpkg", query = "SELECT * FROM maus_new_polygons WHERE fid != '292'") # Exclude an inconsistent polygon with fid 292
             maus_base <- bind_rows(maus_base, maus_new)
         } else {
             warning("Optional file './tmp/maus/maus_new_polygons.gpkg' not found. Continuing with base Maus data.")
@@ -142,8 +143,54 @@ if(!file.exists("./tmp/osm/osm.gpkg")){
     }
 }
 
+if(!file.exists("./tmp/dethier/dethier.gpkg")){
+    tryCatch({
+        dir.create("./tmp/dethier", showWarnings = FALSE)
+        if(!file.exists("./tmp/dethier.zip")) {
+            download.file("https://zenodo.org/records/7699122/files/imports.zip?download=1", destfile = "./tmp/dethier.zip")
+        }
+        dethier_kml_path <- list.files("./tmp/dethier", pattern = "ASGM_global_polygons_20230324\\.kml$", recursive = TRUE, full.names = TRUE)
+        if(length(dethier_kml_path) == 0) {
+            unzip("./tmp/dethier.zip", exdir = "./tmp/dethier")
+            dethier_kml_path <- list.files("./tmp/dethier", pattern = "ASGM_global_polygons_20230324\\.kml$", recursive = TRUE, full.names = TRUE)
+        }
+        sf_use_s2(FALSE) # set FALSE to perform geometry fixing operations
+
+        if (length(dethier_kml_path) > 0) {
+            # The file is a KMZ (ZIP-compressed KML) despite the .kml extension;
+            # extract doc.kml from inside and read it directly
+            dethier_doc_kml <- file.path(dirname(dethier_kml_path[1]), "doc.kml")
+            if (!file.exists(dethier_doc_kml)) {
+                unzip(dethier_kml_path[1], files = "doc.kml", exdir = dirname(dethier_kml_path[1]))
+            }
+            st_read(dethier_doc_kml) |>
+                st_transform(crs = 4326) |>
+                mutate(id_dethier = str_c("D", str_pad(row_number(), width = 7, pad = "0"))) |>
+                select(id_dethier, geom = geometry) |>
+                filter(st_is(geom, c("POLYGON", "MULTIPOLYGON"))) |>
+                st_cast(to = "POLYGON") |>
+                st_make_valid() |>
+                st_buffer(0) |>
+                filter(!st_is_empty(geom)) |>
+                filter(st_is_valid(geom)) |>
+                st_simplify(dTolerance = 0.0001) |>
+                filter(!st_is_empty(geom)) |>
+                st_cast("POLYGON") |>
+                st_make_valid() |>
+                mutate(dethier = "Dethier (2023)") |>
+                st_write(dsn = "./tmp/dethier/dethier.gpkg", delete_dsn = TRUE)
+        } else {
+            warning("Dethier KML file not found in archive. Skipping Dethier processing.")
+        }
+        sf_use_s2(TRUE)
+    }, error = function(e) {
+        warning(paste("Failed to download or process Dethier data. Error:", e$message, "Script will continue without it."))
+        sf_use_s2(TRUE)
+    })
+}
+
 # Integrate mining land use datasets and and remove overlaps
-if(!file.exists("./tmp/maus_tang_osm.gpkg")){
+if(!file.exists("./tmp/mining_land_use.gpkg")){
     
     cat("Integrating mining land use data...\n")
 
@@ -169,9 +216,16 @@ if(!file.exists("./tmp/maus_tang_osm.gpkg")){
         st_sf(geom = st_sfc())
     }
 
+    dethier <- if (file.exists("./tmp/dethier/dethier.gpkg")) {
+        st_read("./tmp/dethier/dethier.gpkg") |> select(geom)
+    } else {
+        warning("Skipping integration: ./tmp/dethier/dethier.gpkg not found.")
+        st_sf(geom = st_sfc())
+    }
+
     sf_use_s2(TRUE)
-    
-    land_use_list <- list(maus, tang, osm) |>
+
+    land_use_list <- list(maus, tang, osm, dethier) |>
       keep(~ nrow(.) > 0)
 
     if (length(land_use_list) > 0 & exists("s2_union_split_agg")) {
@@ -193,8 +247,9 @@ if(!file.exists("./tmp/maus_tang_osm.gpkg")){
         idx_maus <- if(nrow(maus) > 0) lengths(st_intersects(mining_land_use, maus)) > 0 else rep(FALSE, nrow(mining_land_use))
         idx_tang <- if(nrow(tang) > 0) lengths(st_intersects(mining_land_use, tang)) > 0 else rep(FALSE, nrow(mining_land_use))
         idx_osm <- if(nrow(osm) > 0) lengths(st_intersects(mining_land_use, osm)) > 0 else rep(FALSE, nrow(mining_land_use))
-        
-        data_source <- sapply(1:length(idx_maus), function(i) str_c(c("Maus et al. (2022)", "Tang & Werner 2023", "OpenStreetMap")[c(idx_maus[i],idx_tang[i],idx_osm[i])], collapse = ";"))
+        idx_dethier <- if(nrow(dethier) > 0) lengths(st_intersects(mining_land_use, dethier)) > 0 else rep(FALSE, nrow(mining_land_use))
+
+        data_source <- sapply(1:length(idx_maus), function(i) str_c(c("Maus et al. (2022)", "Tang & Werner 2023", "OpenStreetMap", "Dethier (2023)")[c(idx_maus[i],idx_tang[i],idx_osm[i],idx_dethier[i])], collapse = ";"))
         
         mining_land_use <- mining_land_use |>
             mutate(
@@ -205,7 +260,7 @@ if(!file.exists("./tmp/maus_tang_osm.gpkg")){
                 ) |>
                 select(id, data_type, data_source, area_mine, geom)
 
-        st_write(mining_land_use, "./tmp/maus_tang_osm.gpkg", delete_dsn = TRUE)
+        st_write(mining_land_use, "./tmp/mining_land_use.gpkg", delete_dsn = TRUE)
         
     } else if (length(land_use_list) == 0) {
         warning("No mining land use datasets found. Creating empty placeholder.")
@@ -216,7 +271,7 @@ if(!file.exists("./tmp/maus_tang_osm.gpkg")){
 
 } else {
    cat("Loading existing integrated land use data.\n")
-   mining_land_use <- st_read("./tmp/maus_tang_osm.gpkg")
+   mining_land_use <- st_read("./tmp/mining_land_use.gpkg")
 }
 
 # Summary by data sources
@@ -322,8 +377,40 @@ if (!file.exists("./tmp/mining_properties.gpkg")) {
         gem <- props_empty_sf
     }
 
+    # Read mining properties from Dethier (2023) — centroids of ASGM polygons with commodity from metadata
+    dethier_meta_path <- "./tmp/dethier/imports/agm-profile-metadata.xlsx"
+    dethier_doc_kml_path <- "./tmp/dethier/imports/doc.kml"
+    if(file.exists(dethier_meta_path) & file.exists(dethier_doc_kml_path)) {
+        dethier_meta <- read_xlsx(dethier_meta_path, sheet = 1) |>
+            select(district_name = `AGM district name`, primary_commodity = `Mining type`) |>
+            filter(!primary_commodity %in% c("Reference")) |>
+            distinct(district_name, .keep_all = TRUE)
+
+        sf_use_s2(FALSE)
+        dethier_pts <- st_read(dethier_doc_kml_path, quiet = TRUE) |>
+            st_transform(crs = 4326) |>
+            filter(st_is(geometry, c("POLYGON", "MULTIPOLYGON"))) |>
+            mutate(
+                id_data_source = str_c("D", str_pad(row_number(), width = 7, pad = "0")),
+                district_name = sub("_[0-9]+$", "", Name)
+            ) |>
+            left_join(dethier_meta, by = "district_name") |>
+            mutate(
+                primary_commodity = if_else(is.na(primary_commodity), "Unknown", primary_commodity),
+                commodities_list = primary_commodity,
+                data_source = "Dethier (2023)"
+            ) |>
+            select(id_data_source, primary_commodity, commodities_list, data_source, geom = geometry) |>
+            st_centroid() |>
+            st_cast("POINT")
+        sf_use_s2(TRUE)
+    } else {
+        warning("Skipping integration: Dethier metadata or KML not found.")
+        dethier_pts <- props_empty_sf
+    }
+
     # Merge mining properties
-    mining_properties_list <- list(jasansky, sp, gem) |>
+    mining_properties_list <- list(jasansky, sp, gem, dethier_pts) |>
         keep(~ nrow(.) > 0)
         
     if(length(mining_properties_list) > 0) {
