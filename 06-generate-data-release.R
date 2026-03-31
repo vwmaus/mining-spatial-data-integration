@@ -11,8 +11,8 @@ library(stringr)
 library(tidyr)
 
 # 1. USER CONFIGURATION
-IN_DATA_VERSION <- "20251030-all_materials"
-OUT_DATA_VERSION <- "20251227"
+IN_DATA_VERSION <- "20260325-all_materials"
+OUT_DATA_VERSION <- "20260330"
 INPUT_FILE   <- file.path("output", IN_DATA_VERSION, "cluster_features.gpkg")
 N_TOP        <- 100     # Number of top materials to process
 

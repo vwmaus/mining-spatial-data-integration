@@ -57,7 +57,7 @@ batch_list <-
 
 # ------------------------------------------------------------------------------
 # set cluster 
-cl <- makeCluster(parallel::detectCores(), type = "FORK")
+cl <- makeCluster(parallel::detectCores()-8, type = "FORK")
 registerDoParallel(cl)
 
 # ------------------------------------------------------------------------------

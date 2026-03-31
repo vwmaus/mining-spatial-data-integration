@@ -49,7 +49,7 @@ if(file.exists("./R/s2_union_split_agg.R")) {
 }
 
 # --- Define Parameters ---
-data_version <- "20251030-all_materials"
+data_version <- "20260325-all_materials"
 output_dir <- str_c("./output/", data_version)
 dir.create(output_dir, showWarnings = FALSE, recursive = TRUE)
 
@@ -87,21 +87,35 @@ country_tbl <- read_csv(country_tbl_path, show_col_types = FALSE)
 ecoregion_tbl_path <- str_c(output_dir, "/ecoregion_tbl.csv")
 if(!file.exists(ecoregion_tbl_path)){
   cat("Generating ecoregion lookup table...\n")
-  if(!file.exists("./tmp/ecoregions/ecoregions.gpkg")){
+  
+  ecoregion_gpkg <- "./tmp/ecoregions/ecoregions.gpkg"
+  
+  if(!file.exists(ecoregion_gpkg)){
     dir.create("./tmp/ecoregions", showWarnings = FALSE, recursive = TRUE)
-    download.file("https://storage.googleapis.com/teow2016/Ecoregions2017.zip", destfile = "./tmp/Ecoregions2017.zip")
+    # Download if missing (checking zip first)
+    if(!file.exists("./tmp/Ecoregions2017.zip")){
+        download.file("https://storage.googleapis.com/teow2016/Ecoregions2017.zip", destfile = "./tmp/Ecoregions2017.zip")
+    }
     unzip("./tmp/Ecoregions2017.zip", exdir = "./tmp/ecoregions/")
+    
+    # Process and write to GPKG with explicit overwrite to fix schema issues
     st_read("./tmp/ecoregions/Ecoregions2017.shp") |>
       select(ecoregion_name = ECO_NAME, biome_name = BIOME_NAME) |>
-      st_simplify() |>
-      st_write("./tmp/ecoregions/ecoregions.gpkg")
+      st_simplify(dTolerance = 0.01) |> # Slight simplification for performance
+      st_write(ecoregion_gpkg, delete_dsn = TRUE)
   }
   
+  # Load the processed data
+  ecoregion_data <- st_read(ecoregion_gpkg)
+  
+  # Perform join using centroids
+  cat("Performing spatial join for ecoregions...\n")
   st_centroid(cluster_features_sf) |>
-    st_join(st_read("./tmp/ecoregions/ecoregions.gpkg"), join = st_nearest_feature) |>
+    st_join(ecoregion_data, join = st_nearest_feature) |>
     st_drop_geometry() |>
     as_tibble() |>
-    select(id, ecoregion_name, biome_name) |> # Fixed typo 'ecoregions_name'
+    # Explicitly check for column existence before selection to avoid script halt
+    select(id, any_of(c("ecoregion_name", "biome_name"))) |> 
     write_csv(ecoregion_tbl_path)
 }
 ecoregion_tbl <- read_csv(ecoregion_tbl_path, show_col_types = FALSE)

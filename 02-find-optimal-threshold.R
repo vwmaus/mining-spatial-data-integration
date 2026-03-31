@@ -55,7 +55,7 @@ path_harmonisation_table <- "./data/harmonisation_all_materials.csv"
 #
 # set version of the data output (for naming the output folder)
 release_version_name <- "all_materials"
-release_version_date <- "20251030"#format(Sys.Date(), '%Y%m%d')
+release_version_date <- "20260325"#format(Sys.Date(), '%Y%m%d')
 #
 ################################################################################
 

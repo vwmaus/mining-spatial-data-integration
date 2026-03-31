@@ -26,7 +26,7 @@ library(patchwork)
 h_levels_to_plot <- c(1, 3, 5, 7)
 
 # Define the output file path
-output_dir <- "./output/20251030-all_materials"
+output_dir <- "./output/20260325-all_materials"
 dir.create(output_dir, showWarnings = FALSE, recursive = TRUE) # Added recursive
 output_filename <- file.path(output_dir, "plot_cluster_progression_ghana.png")
 

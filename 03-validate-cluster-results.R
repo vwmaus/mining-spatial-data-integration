@@ -32,7 +32,7 @@ library(knitr)
 library(kableExtra)
 library(stringr)
 
-cluster_data_dir <- "./output/20251030-all_materials"
+cluster_data_dir <- "./output/20260325-all_materials"
 
 # Compare assigned commodities with Werner et al. (2020)
 if(!file.exists("./tmp/werner/werner.gpkg")){
